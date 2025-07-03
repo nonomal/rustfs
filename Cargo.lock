@@ -7944,6 +7944,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustfs-disk-core"
+version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "path-absolutize",
+ "rustfs-filemeta",
+ "rustfs-utils",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "time",
+ "tokio",
+ "tracing",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "rustfs-ecstore"
 version = "0.0.1"
 dependencies = [
