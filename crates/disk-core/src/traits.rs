@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::Endpoint;
 use crate::error::{Error, Result};
 use crate::types::*;
 use bytes::Bytes;
+use rustfs_endpoints::Endpoint;
 use rustfs_filemeta::{FileInfo, RawFileInfo};
 use std::fmt::Debug;
 use std::path::PathBuf;

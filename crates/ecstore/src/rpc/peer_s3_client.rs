@@ -25,11 +25,11 @@ use crate::store::all_local_disk;
 use crate::store_utils::is_reserved_or_invalid_bucket;
 use crate::{
     disk::{self, VolumeInfo},
-    endpoints::{EndpointServerPools, Node},
     store_api::{BucketInfo, BucketOptions, DeleteBucketOptions, MakeBucketOptions},
 };
 use async_trait::async_trait;
 use futures::future::join_all;
+use rustfs_endpoints::{EndpointServerPools, Node};
 use rustfs_madmin::heal_commands::{HealDriveInfo, HealResultItem};
 use rustfs_protos::node_service_time_out_client;
 use rustfs_protos::proto_gen::node_service::{

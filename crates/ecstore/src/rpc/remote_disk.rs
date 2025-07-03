@@ -30,7 +30,6 @@ use rustfs_protos::{
 use crate::disk::{
     CheckPartsResp, DeleteOptions, DiskAPI, DiskInfo, DiskInfoOptions, DiskLocation, DiskOption, FileInfoVersions,
     ReadMultipleReq, ReadMultipleResp, ReadOptions, RenameDataResp, UpdateMetadataOpts, VolumeInfo, WalkDirOptions,
-    endpoint::Endpoint,
 };
 use crate::{
     disk::error::{Error, Result},
@@ -44,6 +43,7 @@ use crate::{
         heal_commands::{HealScanMode, HealingTracker},
     },
 };
+use rustfs_endpoints::Endpoint;
 use rustfs_filemeta::{FileInfo, RawFileInfo};
 use rustfs_protos::proto_gen::node_service::RenamePartRequest;
 use rustfs_rio::{HttpReader, HttpWriter};

@@ -38,15 +38,12 @@ use crate::{
     disk::{
         CheckPartsResp, DeleteOptions, DiskAPI, DiskInfo, DiskInfoOptions, DiskOption, DiskStore, FileInfoVersions,
         RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq, ReadMultipleResp, ReadOptions,
-        UpdateMetadataOpts, endpoint::Endpoint, error::DiskError, format::FormatV3, new_disk,
+        UpdateMetadataOpts, error::DiskError, format::FormatV3, new_disk,
     },
     error::{StorageError, to_object_err},
     event::name::EventName,
     event_notification::{EventArgs, send_event},
-    global::{
-        GLOBAL_BackgroundHealState, GLOBAL_LOCAL_DISK_MAP, GLOBAL_LOCAL_DISK_SET_DRIVES, get_global_deployment_id,
-        is_dist_erasure,
-    },
+    global::{GLOBAL_BackgroundHealState, GLOBAL_LOCAL_DISK_MAP, GLOBAL_LOCAL_DISK_SET_DRIVES, get_global_deployment_id},
     heal::{
         data_usage::{DATA_USAGE_CACHE_NAME, DATA_USAGE_ROOT},
         data_usage_cache::{DataUsageCacheInfo, DataUsageEntry, DataUsageEntryInfo},
@@ -76,6 +73,8 @@ use glob::Pattern;
 use http::HeaderMap;
 use md5::{Digest as Md5Digest, Md5};
 use rand::{Rng, seq::SliceRandom};
+use rustfs_endpoints::Endpoint;
+use rustfs_endpoints::is_dist_erasure;
 use rustfs_filemeta::headers::RESERVED_METADATA_PREFIX_LOWER;
 use rustfs_filemeta::{
     FileInfo, FileMeta, FileMetaShallowVersion, MetaCacheEntries, MetaCacheEntry, MetadataResolutionParams, ObjectPartInfo,
@@ -1507,7 +1506,7 @@ impl SetDisks {
             let path = new_disk.endpoint().to_string();
             global_local_disk_map.insert(path, Some(new_disk.clone()));
 
-            if is_dist_erasure().await {
+            if is_dist_erasure() {
                 let mut local_set_drives = GLOBAL_LOCAL_DISK_SET_DRIVES.write().await;
                 local_set_drives[self.pool_index][set_idx][disk_idx] = Some(new_disk.clone());
             }

@@ -38,6 +38,8 @@ members = [
     "crates/zip", # ZIP file handling and compression
     "crates/disk-core",
     "crates/disk-local",
+    "crates/erasure-coding",
+    "crates/endpoints",
 ]
 resolver = "2"
 
@@ -78,6 +80,9 @@ rustfs-signer = { path = "crates/signer", version = "0.0.1" }
 rustfs-workers = { path = "crates/workers", version = "0.0.1" }
 rustfs-disk-core = { path = "crates/disk-core", version= "0.0.1" }
 rustfs-disk-local = { path = "crates/disk-local", version= "0.0.1" }
+rustfs-erasure-coding = { path = "crates/erasure-coding", version= "0.0.1" }
+rustfs-endpoints = { path = "crates/endpoints", version= "0.0.1" }
+
 aes-gcm = { version = "0.10.3", features = ["std"] }
 arc-swap = "1.7.1"
 argon2 = { version = "0.5.3", features = ["std"] }

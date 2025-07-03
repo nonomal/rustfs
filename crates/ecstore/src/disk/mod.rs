@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod endpoint;
+// pub mod endpoint;
 pub mod error;
 pub mod error_conv;
 pub mod error_reduce;
@@ -37,7 +37,7 @@ use crate::heal::{
 };
 use crate::rpc::RemoteDisk;
 use bytes::Bytes;
-use endpoint::Endpoint;
+// use endpoint::Endpoint;
 use error::DiskError;
 use error::{Error, Result};
 use local::LocalDisk;
@@ -98,7 +98,7 @@ impl DiskAPI for Disk {
     }
 
     #[tracing::instrument(skip(self))]
-    fn endpoint(&self) -> Endpoint {
+    fn endpoint(&self) -> rustfs_endpoints::Endpoint {
         match self {
             Disk::Local(local_disk) => local_disk.endpoint(),
             Disk::Remote(remote_disk) => remote_disk.endpoint(),
@@ -422,7 +422,7 @@ impl DiskAPI for Disk {
     }
 }
 
-pub async fn new_disk(ep: &Endpoint, opt: &DiskOption) -> Result<DiskStore> {
+pub async fn new_disk(ep: &rustfs_endpoints::Endpoint, opt: &DiskOption) -> Result<DiskStore> {
     if ep.is_local {
         let s = LocalDisk::new(ep, opt.cleanup).await?;
         Ok(Arc::new(Disk::Local(Box::new(s))))
@@ -439,7 +439,7 @@ pub trait DiskAPI: Debug + Send + Sync + 'static {
     fn is_local(&self) -> bool;
     // LastConn
     fn host_name(&self) -> String;
-    fn endpoint(&self) -> Endpoint;
+    fn endpoint(&self) -> rustfs_endpoints::Endpoint;
     async fn close(&self) -> Result<()>;
     async fn get_disk_id(&self) -> Result<Option<Uuid>>;
     async fn set_disk_id(&self, id: Option<Uuid>) -> Result<()>;
@@ -732,7 +732,7 @@ pub fn has_part_err(part_errs: &[usize]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use endpoint::Endpoint;
+    // use endpoint::Endpoint;
     use local::LocalDisk;
     use std::path::PathBuf;
     use tokio::fs;
@@ -1025,7 +1025,7 @@ mod tests {
         let test_dir = "./test_disk_creation";
         fs::create_dir_all(&test_dir).await.unwrap();
 
-        let endpoint = Endpoint::try_from(test_dir).unwrap();
+        let endpoint = rustfs_endpoints::Endpoint::try_from(test_dir).unwrap();
         let opt = DiskOption {
             cleanup: false,
             health_check: true,
@@ -1050,7 +1050,7 @@ mod tests {
         let test_dir = "./test_disk_enum";
         fs::create_dir_all(&test_dir).await.unwrap();
 
-        let endpoint = Endpoint::try_from(test_dir).unwrap();
+        let endpoint = rustfs_endpoints::Endpoint::try_from(test_dir).unwrap();
         let local_disk = LocalDisk::new(&endpoint, false).await.unwrap();
         let disk = Disk::Local(Box::new(local_disk));
 

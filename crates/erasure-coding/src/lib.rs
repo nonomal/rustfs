@@ -12,23 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # RustFS Disk Core
-//!
-//! This crate provides the core abstractions and traits for disk operations in RustFS.
-//! It defines the fundamental interfaces that different disk implementations must follow.
+pub mod decode;
+pub mod encode;
+pub mod erasure;
+pub mod heal;
 
-// pub mod endpoint;
-pub mod error;
-pub mod error_conv;
-pub mod error_reduce;
-pub mod format;
-pub mod traits;
-pub mod types;
+mod bitrot;
+pub use bitrot::*;
 
-// pub use endpoint::*;
-pub use error::*;
-pub use error_conv::*;
-pub use error_reduce::*;
-pub use format::*;
-pub use traits::*;
-pub use types::*;
+pub use erasure::{Erasure, ReedSolomonEncoder, calc_shard_size};

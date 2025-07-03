@@ -15,11 +15,12 @@
 use crate::StorageAPI;
 use crate::admin_server_info::get_commit_id;
 use crate::error::{Error, Result};
-use crate::global::{GLOBAL_BOOT_TIME, get_global_endpoints};
+use crate::global::GLOBAL_BOOT_TIME;
+use crate::new_object_layer_fn;
 use crate::rpc::PeerRestClient;
-use crate::{endpoints::EndpointServerPools, new_object_layer_fn};
 use futures::future::join_all;
 use lazy_static::lazy_static;
+use rustfs_endpoints::{EndpointServerPools, get_global_endpoints};
 use rustfs_madmin::{ItemState, ServerProperties};
 use std::sync::OnceLock;
 use std::time::SystemTime;

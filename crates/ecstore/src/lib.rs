@@ -24,8 +24,8 @@ pub mod cmd;
 pub mod compress;
 pub mod config;
 pub mod disk;
-pub mod disks_layout;
-pub mod endpoints;
+// pub mod disks_layout;
+// pub mod endpoints;
 pub mod erasure_coding;
 pub mod error;
 pub mod global;
@@ -50,8 +50,4 @@ pub mod event_notification;
 pub mod tier;
 
 pub use global::new_object_layer_fn;
-pub use global::set_global_endpoints;
-pub use global::update_erasure_type;
-
-pub use global::GLOBAL_Endpoints;
 pub use store_api::StorageAPI;

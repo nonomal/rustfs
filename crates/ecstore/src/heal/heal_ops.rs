@@ -28,15 +28,13 @@ use crate::{
     heal::{error::ERR_HEAL_STOP_SIGNALLED, heal_commands::DRIVE_STATE_OK},
 };
 use crate::{
-    disk::endpoint::Endpoint,
-    endpoints::Endpoints,
-    global::GLOBAL_IsDistErasure,
     heal::heal_commands::{HEAL_UNKNOWN_SCAN, HealStartSuccess},
     new_object_layer_fn,
 };
 use chrono::Utc;
 use futures::join;
 use lazy_static::lazy_static;
+use rustfs_endpoints::{Endpoint, Endpoints, is_dist_erasure};
 use rustfs_filemeta::MetaCacheEntry;
 use rustfs_madmin::heal_commands::{HealDriveInfo, HealItemType, HealResultItem};
 use rustfs_utils::path::has_prefix;
@@ -747,7 +745,7 @@ impl AllHealState {
         let mut hsp = HealStopSuccess::default();
         if let Some(he) = self.get_heal_sequence(path).await {
             let client_token = he.client_token.clone();
-            if *GLOBAL_IsDistErasure.read().await {
+            if is_dist_erasure() {
                 // TODO: proxy
             }
 
@@ -818,7 +816,7 @@ impl AllHealState {
             .insert(path_s.to_string(), heal_sequence.clone());
 
         let client_token = heal_sequence.client_token.clone();
-        if *GLOBAL_IsDistErasure.read().await {
+        if is_dist_erasure() {
             // TODO: proxy
         }
 

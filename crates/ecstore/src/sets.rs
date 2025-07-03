@@ -24,9 +24,8 @@ use crate::{
         format::{DistributionAlgoVersion, FormatV3},
         new_disk,
     },
-    endpoints::{Endpoints, PoolEndpoints},
     error::StorageError,
-    global::{GLOBAL_LOCAL_DISK_SET_DRIVES, is_dist_erasure},
+    global::GLOBAL_LOCAL_DISK_SET_DRIVES,
     heal::heal_commands::{
         DRIVE_STATE_CORRUPT, DRIVE_STATE_MISSING, DRIVE_STATE_OFFLINE, DRIVE_STATE_OK, HEAL_ITEM_METADATA, HealOpts,
     },
@@ -41,6 +40,7 @@ use crate::{
 use futures::future::join_all;
 use http::HeaderMap;
 use rustfs_common::globals::GLOBAL_Local_Node_Name;
+use rustfs_endpoints::{Endpoints, PoolEndpoints, is_dist_erasure};
 use rustfs_filemeta::FileInfo;
 use rustfs_lock::{LockApi, namespace_lock::NsLockMap, new_lock_api};
 use rustfs_madmin::heal_commands::{HealDriveInfo, HealResultItem};
@@ -129,7 +129,7 @@ impl Sets {
                     continue;
                 }
 
-                if disk.as_ref().unwrap().is_local() && is_dist_erasure().await {
+                if disk.as_ref().unwrap().is_local() && is_dist_erasure() {
                     let local_disk = {
                         let local_set_drives = GLOBAL_LOCAL_DISK_SET_DRIVES.read().await;
                         local_set_drives[pool_idx][i][j].clone()
@@ -169,7 +169,7 @@ impl Sets {
             let set_disks = SetDisks::new(
                 locker.clone(),
                 GLOBAL_Local_Node_Name.read().await.to_string(),
-                Arc::new(RwLock::new(NsLockMap::new(is_dist_erasure().await))),
+                Arc::new(RwLock::new(NsLockMap::new(is_dist_erasure()))),
                 Arc::new(RwLock::new(set_drive)),
                 set_drive_count,
                 partiy_count,

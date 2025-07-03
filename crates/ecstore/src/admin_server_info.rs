@@ -14,8 +14,7 @@
 
 use crate::error::{Error, Result};
 use crate::{
-    disk::endpoint::Endpoint,
-    global::{GLOBAL_BOOT_TIME, GLOBAL_Endpoints},
+    global::GLOBAL_BOOT_TIME,
     heal::{
         data_usage::{DATA_USAGE_CACHE_NAME, DATA_USAGE_ROOT, load_data_usage_from_backend},
         data_usage_cache::DataUsageCache,
@@ -29,6 +28,7 @@ use rustfs_common::{
     // error::{Error, Result},
     globals::GLOBAL_Local_Node_Name,
 };
+use rustfs_endpoints::{Endpoint, get_global_endpoints};
 use rustfs_madmin::{
     BackendDisks, Disk, ErasureSetInfo, ITEM_INITIALIZING, ITEM_OFFLINE, ITEM_ONLINE, InfoMessage, ServerProperties,
 };
@@ -131,10 +131,7 @@ pub async fn get_local_server_property() -> ServerProperties {
     let mut pool_numbers = HashSet::new();
     let mut network = HashMap::new();
 
-    let endpoints = match GLOBAL_Endpoints.get() {
-        Some(eps) => eps,
-        None => return ServerProperties::default(),
-    };
+    let endpoints = get_global_endpoints();
     for ep in endpoints.as_ref().iter() {
         for endpoint in ep.endpoints.as_ref().iter() {
             let node_name = match endpoint.url.host_str() {

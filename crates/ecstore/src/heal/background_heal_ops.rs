@@ -38,7 +38,7 @@ use crate::heal::heal_commands::{HEAL_ITEM_BUCKET, HealScanMode};
 use crate::heal::heal_ops::{BG_HEALING_UUID, HealSource};
 use crate::{
     config::RUSTFS_CONFIG_PREFIX,
-    disk::{BUCKET_META_PREFIX, DiskAPI, DiskInfoOptions, RUSTFS_META_BUCKET, endpoint::Endpoint, error::DiskError},
+    disk::{BUCKET_META_PREFIX, DiskAPI, DiskInfoOptions, RUSTFS_META_BUCKET, error::DiskError},
     global::{GLOBAL_BackgroundHealRoutine, GLOBAL_BackgroundHealState, GLOBAL_LOCAL_DISK_MAP},
     heal::{
         data_usage::{DATA_USAGE_CACHE_NAME, DATA_USAGE_ROOT},
@@ -50,6 +50,7 @@ use crate::{
     store::get_disk_via_endpoint,
     store_api::{BucketInfo, BucketOptions, StorageAPI},
 };
+use rustfs_endpoints::Endpoint;
 
 pub static DEFAULT_MONITOR_NEW_DISK_INTERVAL: Duration = Duration::from_secs(10);
 

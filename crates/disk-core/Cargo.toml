@@ -27,6 +27,7 @@ workspace = true
 async-trait.workspace = true
 bytes.workspace = true
 path-absolutize.workspace = true
+rustfs-endpoints.workspace = true
 rustfs-filemeta.workspace = true
 rustfs-utils = { workspace = true, features = ["net"] }
 serde = { workspace = true, features = ["derive"] }

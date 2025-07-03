@@ -12,23 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # RustFS Disk Core
-//!
-//! This crate provides the core abstractions and traits for disk operations in RustFS.
-//! It defines the fundamental interfaces that different disk implementations must follow.
+use lazy_static::lazy_static;
+use std::sync::OnceLock;
 
-// pub mod endpoint;
-pub mod error;
-pub mod error_conv;
-pub mod error_reduce;
-pub mod format;
-pub mod traits;
-pub mod types;
+lazy_static! {
+    pub static ref GLOBAL_RUSTFS_PORT: OnceLock<u16> = OnceLock::new();
+}
 
-// pub use endpoint::*;
-pub use error::*;
-pub use error_conv::*;
-pub use error_reduce::*;
-pub use format::*;
-pub use traits::*;
-pub use types::*;
+/// Get the global rustfs port
+pub fn get_global_rustfs_port() -> u16 {
+    *GLOBAL_RUSTFS_PORT.get().unwrap_or(&9000)
+}
+
+/// Set the global rustfs port
+pub fn set_global_rustfs_port(value: u16) {
+    GLOBAL_RUSTFS_PORT.get_or_init(|| value);
+}

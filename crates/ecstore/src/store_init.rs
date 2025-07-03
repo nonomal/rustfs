@@ -23,12 +23,11 @@ use crate::{
         format::{FormatErasureVersion, FormatMetaVersion, FormatV3},
         new_disk,
     },
-    endpoints::Endpoints,
     heal::heal_commands::init_healing_tracker,
 };
 use futures::future::join_all;
+use rustfs_endpoints::Endpoints;
 use std::collections::{HashMap, hash_map::Entry};
-
 use tracing::{info, warn};
 use uuid::Uuid;
 

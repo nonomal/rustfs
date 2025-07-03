@@ -18,7 +18,6 @@ use crate::bucket::metadata_sys::{self, set_bucket_metadata};
 use crate::bucket::utils::{check_valid_bucket_name, check_valid_bucket_name_strict, is_meta_bucketname};
 use crate::config::GLOBAL_StorageClass;
 use crate::config::storageclass;
-use crate::disk::endpoint::{Endpoint, EndpointType};
 use crate::disk::{DiskAPI, DiskInfo, DiskInfoOptions};
 use crate::error::{Error, Result};
 use crate::error::{
@@ -27,8 +26,7 @@ use crate::error::{
 };
 use crate::global::{
     DISK_ASSUME_UNKNOWN_SIZE, DISK_FILL_FRACTION, DISK_MIN_INODES, DISK_RESERVE_FRACTION, GLOBAL_BOOT_TIME,
-    GLOBAL_LOCAL_DISK_MAP, GLOBAL_LOCAL_DISK_SET_DRIVES, GLOBAL_TierConfigMgr, get_global_endpoints, is_dist_erasure,
-    is_erasure_sd, set_global_deployment_id, set_object_layer,
+    GLOBAL_LOCAL_DISK_MAP, GLOBAL_LOCAL_DISK_SET_DRIVES, GLOBAL_TierConfigMgr, set_global_deployment_id, set_object_layer,
 };
 use crate::heal::data_usage::{DATA_USAGE_ROOT, DataUsageInfo};
 use crate::heal::data_usage_cache::{DataUsageCache, DataUsageCacheInfo};
@@ -43,7 +41,6 @@ use crate::store_init::{check_disk_fatal_errs, ec_drives_no_config};
 use crate::{
     bucket::{lifecycle::bucket_lifecycle_ops::TransitionState, metadata::BucketMetadata},
     disk::{BUCKET_META_PREFIX, DiskOption, DiskStore, RUSTFS_META_BUCKET, new_disk},
-    endpoints::EndpointServerPools,
     rpc::S3PeerSys,
     sets::Sets,
     store_api::{
@@ -59,6 +56,8 @@ use http::HeaderMap;
 use lazy_static::lazy_static;
 use rand::Rng as _;
 use rustfs_common::globals::{GLOBAL_Local_Node_Name, GLOBAL_Rustfs_Host, GLOBAL_Rustfs_Port};
+use rustfs_endpoints::{Endpoint, EndpointType, is_erasure_sd};
+use rustfs_endpoints::{EndpointServerPools, get_global_endpoints, is_dist_erasure};
 use rustfs_filemeta::FileInfo;
 use rustfs_filemeta::MetaCacheEntry;
 use rustfs_madmin::heal_commands::HealResultItem;
@@ -224,7 +223,7 @@ impl ECStore {
         }
 
         // 替换本地磁盘
-        if !is_dist_erasure().await {
+        if !is_dist_erasure() {
             let mut global_local_disk_map = GLOBAL_LOCAL_DISK_MAP.write().await;
             for disk in local_disks {
                 let path = disk.endpoint().to_string();
@@ -2739,7 +2738,7 @@ pub async fn has_space_for(dis: &[Option<DiskInfo>], size: i64) -> Result<bool> 
     let per_disk = size / disks_num as u64;
 
     for disk in dis.iter().flatten() {
-        if !is_erasure_sd().await && disk.free_inodes < DISK_MIN_INODES && disk.used_inodes > 0 {
+        if !is_erasure_sd() && disk.free_inodes < DISK_MIN_INODES && disk.used_inodes > 0 {
             return Ok(false);
         }
 

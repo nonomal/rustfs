@@ -16,7 +16,6 @@
 use crate::{
     StorageAPI,
     bucket::{metadata_sys, target::BucketTarget},
-    endpoints::Node,
     rpc::{PeerS3Client, RemotePeerS3Client},
 };
 use crate::{
@@ -27,6 +26,7 @@ use crate::{
 use aws_sdk_s3::Client as S3Client;
 use chrono::Utc;
 use lazy_static::lazy_static;
+use rustfs_endpoints::Node;
 use std::sync::Arc;
 use std::{
     collections::HashMap,

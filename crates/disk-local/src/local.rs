@@ -34,6 +34,7 @@ use super::os::{is_root_disk, rename_all};
 use rustfs_disk_core::error::FileAccessDeniedWithContext;
 use rustfs_disk_core::error::{Error, Result};
 use rustfs_disk_core::error_conv::{to_access_error, to_file_error, to_unformatted_disk_error, to_volume_error};
+use rustfs_disk_core::format::FormatV3;
 use rustfs_disk_core::{
     BUCKET_META_PREFIX, CheckPartsResp, DeleteOptions, DiskAPI, DiskInfo, DiskInfoOptions, DiskLocation, FORMAT_CONFIG_FILE,
     FileInfoVersions, RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq,
@@ -44,7 +45,8 @@ use rustfs_disk_core::{
     RUSTFS_META_TMP_DELETED_BUCKET,
 };
 use rustfs_disk_core::{FileWriter, STORAGE_FORMAT_FILE};
-use rustfs_disk_core::{endpoint::Endpoint, format::FormatV3};
+use rustfs_endpoints::Endpoint;
+use rustfs_endpoints::is_erasure_sd;
 use rustfs_utils::path::{
     GLOBAL_DIR_SUFFIX, GLOBAL_DIR_SUFFIX_WITH_SLASH, SLASH_SEPARATOR, clean, decode_dir_object, encode_dir_object, has_suffix,
     path_join, path_join_buf,
@@ -2397,17 +2399,17 @@ async fn get_disk_info(drive_path: PathBuf) -> Result<(rustfs_utils::os::DiskInf
     check_path_length(&drive_path)?;
 
     let disk_info = get_info(&drive_path)?;
-    let root_drive = is_root_disk(&drive_path, SLASH_SEPARATOR).unwrap_or_default();
-    // let root_drive = if !*GLOBAL_IsErasureSD.read().await {
-    //     let root_disk_threshold = *GLOBAL_RootDiskThreshold.read().await;
-    //     if root_disk_threshold > 0 {
-    //         disk_info.total <= root_disk_threshold
-    //     } else {
-    //         is_root_disk(&drive_path, SLASH_SEPARATOR).unwrap_or_default()
-    //     }
-    // } else {
-    //     false
-    // };
+
+    let root_drive = if !is_erasure_sd() {
+        // let root_disk_threshold = *GLOBAL_RootDiskThreshold.read().await;
+        // if root_disk_threshold > 0 {
+        //     disk_info.total <= root_disk_threshold
+        // } else {
+        is_root_disk(&drive_path, SLASH_SEPARATOR).unwrap_or_default()
+        // }
+    } else {
+        false
+    };
 
     Ok((disk_info, root_drive))
 }

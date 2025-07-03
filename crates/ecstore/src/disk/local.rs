@@ -19,7 +19,7 @@ use super::{
     FileInfoVersions, RUSTFS_META_BUCKET, ReadMultipleReq, ReadMultipleResp, ReadOptions, RenameDataResp,
     STORAGE_FORMAT_FILE_BACKUP, UpdateMetadataOpts, VolumeInfo, WalkDirOptions, os,
 };
-use super::{endpoint::Endpoint, error::DiskError, format::FormatV3};
+use super::{error::DiskError, format::FormatV3};
 
 use crate::bucket::metadata_sys::{self};
 use crate::bucket::versioning::VersioningApi;
@@ -35,7 +35,7 @@ use crate::disk::{
     FileReader, RUSTFS_META_TMP_DELETED_BUCKET, conv_part_err_to_int,
 };
 use crate::disk::{FileWriter, STORAGE_FORMAT_FILE};
-use crate::global::{GLOBAL_IsErasureSD, GLOBAL_RootDiskThreshold};
+use crate::global::GLOBAL_RootDiskThreshold;
 use crate::heal::data_scanner::{
     ScannerItem, ShouldSleepFn, SizeSummary, lc_has_active_rules, rep_has_active_rules, scan_data_folder,
 };
@@ -46,6 +46,7 @@ use crate::heal::heal_commands::{HealScanMode, HealingTracker};
 use crate::heal::heal_ops::HEALING_TRACKER_FILENAME;
 use crate::new_object_layer_fn;
 use crate::store_api::{ObjectInfo, StorageAPI};
+use rustfs_endpoints::is_erasure_sd;
 use rustfs_utils::path::{
     GLOBAL_DIR_SUFFIX, GLOBAL_DIR_SUFFIX_WITH_SLASH, SLASH_SEPARATOR, clean, decode_dir_object, encode_dir_object, has_suffix,
     path_join, path_join_buf,
@@ -108,7 +109,7 @@ pub struct LocalDisk {
     pub root: PathBuf,
     pub format_path: PathBuf,
     pub format_info: RwLock<FormatInfo>,
-    pub endpoint: Endpoint,
+    pub endpoint: rustfs_endpoints::Endpoint,
     pub disk_info_cache: Arc<Cache<DiskInfo>>,
     pub scanning: AtomicU32,
     pub rotational: bool,
@@ -143,7 +144,7 @@ impl Debug for LocalDisk {
 }
 
 impl LocalDisk {
-    pub async fn new(ep: &Endpoint, cleanup: bool) -> Result<Self> {
+    pub async fn new(ep: &rustfs_endpoints::Endpoint, cleanup: bool) -> Result<Self> {
         debug!("Creating local disk");
         let root = match fs::canonicalize(ep.get_file_path()).await {
             Ok(path) => path,
@@ -1137,7 +1138,7 @@ impl DiskAPI for LocalDisk {
     }
 
     #[tracing::instrument(skip(self))]
-    fn endpoint(&self) -> Endpoint {
+    fn endpoint(&self) -> rustfs_endpoints::Endpoint {
         self.endpoint.clone()
     }
 
@@ -2397,7 +2398,7 @@ async fn get_disk_info(drive_path: PathBuf) -> Result<(rustfs_utils::os::DiskInf
     check_path_length(&drive_path)?;
 
     let disk_info = get_info(&drive_path)?;
-    let root_drive = if !*GLOBAL_IsErasureSD.read().await {
+    let root_drive = if !is_erasure_sd() {
         let root_disk_threshold = *GLOBAL_RootDiskThreshold.read().await;
         if root_disk_threshold > 0 {
             disk_info.total <= root_disk_threshold
@@ -2413,6 +2414,8 @@ async fn get_disk_info(drive_path: PathBuf) -> Result<(rustfs_utils::os::DiskInf
 
 #[cfg(test)]
 mod test {
+    use rustfs_endpoints::Endpoint;
+
     use super::*;
 
     #[tokio::test]

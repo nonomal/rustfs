@@ -14,12 +14,11 @@
 
 use crate::error::{Error, Result};
 use crate::{
-    endpoints::EndpointServerPools,
-    global::is_dist_erasure,
     heal::heal_commands::BgHealState,
     metrics_realtime::{CollectMetricsOpts, MetricType},
 };
 use rmp_serde::{Deserializer, Serializer};
+use rustfs_endpoints::{EndpointServerPools, is_dist_erasure};
 use rustfs_madmin::{
     ServerProperties,
     health::{Cpus, MemInfo, OsInfo, Partitions, ProcInfo, SysConfig, SysErrors, SysService},
@@ -59,7 +58,7 @@ impl PeerRestClient {
         Self { host, grid_host }
     }
     pub async fn new_clients(eps: EndpointServerPools) -> (Vec<Option<Self>>, Vec<Option<Self>>) {
-        if !is_dist_erasure().await {
+        if !is_dist_erasure() {
             return (Vec::new(), Vec::new());
         }
 

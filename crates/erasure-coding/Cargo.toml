@@ -13,7 +13,7 @@
 # limitations under the License.
 
 [package]
-name = "rustfs-disk-local"
+name = "rustfs-erasure-coding"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -24,18 +24,13 @@ version.workspace = true
 workspace = true
 
 [dependencies]
-rustfs-disk-core.workspace = true
-rustfs-filemeta.workspace = true
-async-trait.workspace = true
-bytes.workspace = true
-tokio = { workspace = true, features = ["fs", "io-util", "sync"] }
-uuid = { workspace = true, features = ["v4", "serde"] }
-rustfs-utils = { workspace = true, features = ["os", "path"] }
+rustfs-disk-core.workspace=true
+pin-project-lite.workspace = true
+rustfs-utils = { workspace = true, features = ["hash"] }
+tokio = { workspace = true, features = ["io-util"] }
 tracing.workspace = true
-tempfile.workspace = true
-path-absolutize.workspace = true
-time.workspace = true
-rustfs-endpoints.workspace = true
-
-[target.'cfg(not(windows))'.dependencies]
-nix.workspace = true 
+uuid = { workspace = true, features = ["v4", "fast-rng", "serde"] }
+bytes.workspace = true
+futures.workspace = true
+reed-solomon-simd.workspace = true 
+smallvec.workspace = true 

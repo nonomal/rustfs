@@ -17,10 +17,11 @@ use crate::bucket::metadata::{BUCKET_LIFECYCLE_CONFIG, load_bucket_metadata_pars
 use crate::bucket::utils::{deserialize, is_meta_bucketname};
 use crate::cmd::bucket_targets;
 use crate::error::{Error, Result, is_err_bucket_not_found};
-use crate::global::{GLOBAL_Endpoints, is_dist_erasure, is_erasure, new_object_layer_fn};
+use crate::global::new_object_layer_fn;
 use crate::heal::heal_commands::HealOpts;
 use crate::store::ECStore;
 use futures::future::join_all;
+use rustfs_endpoints::{get_global_endpoints, is_dist_erasure, is_erasure};
 use rustfs_policy::policy::BucketPolicy;
 use s3s::dto::{
     BucketLifecycleConfiguration, NotificationConfiguration, ObjectLockConfiguration, ReplicationConfiguration,
@@ -195,11 +196,8 @@ impl BucketMetadataSys {
     }
     async fn init_internal(&self, buckets: Vec<String>) -> Result<()> {
         let count = {
-            if let Some(endpoints) = GLOBAL_Endpoints.get() {
-                endpoints.es_count() * 10
-            } else {
-                return Err(Error::other("GLOBAL_Endpoints not init"));
-            }
+            let endpoints = get_global_endpoints();
+            endpoints.es_count() * 10
         };
 
         let mut failed_buckets: HashSet<String> = HashSet::new();
@@ -219,7 +217,7 @@ impl BucketMetadataSys {
         let mut initialized = self.initialized.write().await;
         *initialized = true;
 
-        if is_dist_erasure().await {
+        if is_dist_erasure() {
             // TODO: refresh_buckets_metadata_loop
         }
 
@@ -345,7 +343,7 @@ impl BucketMetadataSys {
         let mut bm = match load_bucket_metadata_parse(store, bucket, parse).await {
             Ok(res) => res,
             Err(err) => {
-                if !is_erasure().await && !is_dist_erasure().await && is_err_bucket_not_found(&err) {
+                if !is_erasure() && !is_dist_erasure() && is_err_bucket_not_found(&err) {
                     BucketMetadata::new(bucket)
                 } else {
                     return Err(err);

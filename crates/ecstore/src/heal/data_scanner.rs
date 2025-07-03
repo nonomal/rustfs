@@ -66,7 +66,7 @@ use crate::{
         heal::Config,
     },
     disk::{DiskInfoOptions, DiskStore},
-    global::{GLOBAL_BackgroundHealState, GLOBAL_IsErasure, GLOBAL_IsErasureSD},
+    global::GLOBAL_BackgroundHealState,
     heal::{
         data_usage::BACKGROUND_HEAL_INFO_PATH,
         data_usage_cache::{DataUsageHashMap, hash_path},
@@ -88,6 +88,7 @@ use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use rand::Rng;
 use rmp_serde::{Deserializer, Serializer};
+use rustfs_endpoints::{is_erasure, is_erasure_sd};
 use rustfs_filemeta::{FileInfo, MetaCacheEntries, MetaCacheEntry, MetadataResolutionParams};
 use rustfs_utils::path::encode_dir_object;
 use rustfs_utils::path::{SLASH_SEPARATOR, path_join, path_to_bucket_object, path_to_bucket_object_with_base_path};
@@ -367,7 +368,7 @@ impl Default for BackgroundHealInfo {
 }
 
 async fn read_background_heal_info(store: Arc<ECStore>) -> BackgroundHealInfo {
-    if *GLOBAL_IsErasureSD.read().await {
+    if is_erasure_sd() {
         return BackgroundHealInfo::default();
     }
 
@@ -381,7 +382,7 @@ async fn read_background_heal_info(store: Arc<ECStore>) -> BackgroundHealInfo {
 }
 
 async fn save_background_heal_info(store: Arc<ECStore>, info: &BackgroundHealInfo) {
-    if *GLOBAL_IsErasureSD.read().await {
+    if is_erasure_sd() {
         return;
     }
     let b = match serde_json::to_vec(info) {
@@ -1526,7 +1527,7 @@ pub async fn scan_data_folder(
 
     let base_path = drive.to_string();
     let (update_path, close_disk) = current_path_updater(&base_path, &cache.info.name);
-    let skip_heal = if *GLOBAL_IsErasure.read().await || cache.info.skip_healing {
+    let skip_heal = if is_erasure() || cache.info.skip_healing {
         AtomicBool::new(true)
     } else {
         AtomicBool::new(false)
@@ -1556,7 +1557,7 @@ pub async fn scan_data_folder(
         we_sleep: should_sleep,
     };
 
-    if *GLOBAL_IsErasure.read().await || !cache.info.skip_healing {
+    if is_erasure() || !cache.info.skip_healing {
         s.heal_object_select = HEAL_OBJECT_SELECT_PROB as u32;
     }
 
