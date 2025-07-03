@@ -147,6 +147,7 @@ pub async fn remove(path: impl AsRef<Path>) -> io::Result<()> {
     }
 }
 
+#[allow(dead_code)]
 pub async fn remove_all(path: impl AsRef<Path>) -> io::Result<()> {
     let meta = fs::metadata(path.as_ref()).await?;
     if meta.is_dir() {
