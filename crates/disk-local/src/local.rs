@@ -39,19 +39,22 @@ use rustfs_disk_core::{
     BUCKET_META_PREFIX, CheckPartsResp, DeleteOptions, DiskAPI, DiskInfo, DiskInfoOptions, DiskLocation, FORMAT_CONFIG_FILE,
     FileInfoVersions, RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq,
     ReadMultipleResp, ReadOptions, RenameDataResp, STORAGE_FORMAT_FILE_BACKUP, UpdateMetadataOpts, VolumeInfo, WalkDirOptions,
+    conv_part_err_to_int,
 };
 use rustfs_disk_core::{
-    CHECK_PART_FILE_CORRUPT, CHECK_PART_FILE_NOT_FOUND, CHECK_PART_SUCCESS, CHECK_PART_VOLUME_NOT_FOUND, FileReader,
-    RUSTFS_META_TMP_DELETED_BUCKET,
+    CHECK_PART_FILE_CORRUPT, CHECK_PART_FILE_NOT_FOUND, CHECK_PART_SUCCESS, CHECK_PART_UNKNOWN, CHECK_PART_VOLUME_NOT_FOUND,
+    FileReader, RUSTFS_META_TMP_DELETED_BUCKET,
 };
 use rustfs_disk_core::{FileWriter, STORAGE_FORMAT_FILE};
 use rustfs_endpoints::Endpoint;
 use rustfs_endpoints::is_erasure_sd;
+use rustfs_erasure_coding::bitrot_verify;
 use rustfs_utils::path::{
     GLOBAL_DIR_SUFFIX, GLOBAL_DIR_SUFFIX_WITH_SLASH, SLASH_SEPARATOR, clean, decode_dir_object, encode_dir_object, has_suffix,
     path_join, path_join_buf,
 };
 
+use rustfs_utils::HashAlgorithm;
 use tokio::time::interval;
 
 // use crate::erasure_coding::bitrot_verify;
@@ -165,7 +168,7 @@ impl LocalDisk {
             .join(Path::new(FORMAT_CONFIG_FILE))
             .absolutize_virtually(&root)?
             .into_owned();
-        debug!("format_path: {:?}", format_path);
+
         let (format_data, format_meta) = read_file_exists(&format_path).await?;
 
         let mut id = None;
@@ -270,7 +273,7 @@ impl LocalDisk {
 
         let root = disk.root.clone();
         tokio::spawn(Self::cleanup_deleted_objects_loop(root, exit_rx));
-        debug!("LocalDisk created: {:?}", disk);
+
         Ok(disk)
     }
 
@@ -798,27 +801,27 @@ impl LocalDisk {
     //     DiskMetrics::default()
     // }
 
-    // async fn bitrot_verify(
-    //     &self,
-    //     part_path: &PathBuf,
-    //     part_size: usize,
-    //     algo: HashAlgorithm,
-    //     sum: &[u8],
-    //     shard_size: usize,
-    // ) -> Result<()> {
-    //     let file = super::fs::open_file(part_path, O_CREATE | O_WRONLY)
-    //         .await
-    //         .map_err(to_file_error)?;
+    async fn bitrot_verify(
+        &self,
+        part_path: &PathBuf,
+        part_size: usize,
+        algo: HashAlgorithm,
+        sum: &[u8],
+        shard_size: usize,
+    ) -> Result<()> {
+        let file = super::fs::open_file(part_path, O_CREATE | O_WRONLY)
+            .await
+            .map_err(to_file_error)?;
 
-    //     let meta = file.metadata().await.map_err(to_file_error)?;
-    //     let file_size = meta.len() as usize;
+        let meta = file.metadata().await.map_err(to_file_error)?;
+        let file_size = meta.len() as usize;
 
-    //     bitrot_verify(Box::new(file), file_size, part_size, algo, bytes::Bytes::copy_from_slice(sum), shard_size)
-    //         .await
-    //         .map_err(to_file_error)?;
+        bitrot_verify(Box::new(file), file_size, part_size, algo, bytes::Bytes::copy_from_slice(sum), shard_size)
+            .await
+            .map_err(to_file_error)?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     async fn scan_dir<W: AsyncWrite + Unpin>(
         &self,
@@ -1270,49 +1273,49 @@ impl DiskAPI for LocalDisk {
         Ok(())
     }
 
-    // #[tracing::instrument(skip(self))]
-    // async fn verify_file(&self, volume: &str, path: &str, fi: &FileInfo) -> Result<CheckPartsResp> {
-    //     let volume_dir = self.get_bucket_path(volume)?;
-    //     if !skip_access_checks(volume) {
-    //         if let Err(e) = access(&volume_dir).await {
-    //             return Err(to_access_error(e, Error::VolumeAccessDenied).into());
-    //         }
-    //     }
+    #[tracing::instrument(skip(self))]
+    async fn verify_file(&self, volume: &str, path: &str, fi: &FileInfo) -> Result<CheckPartsResp> {
+        let volume_dir = self.get_bucket_path(volume)?;
+        if !skip_access_checks(volume) {
+            if let Err(e) = access(&volume_dir).await {
+                return Err(to_access_error(e, Error::VolumeAccessDenied).into());
+            }
+        }
 
-    //     let mut resp = CheckPartsResp {
-    //         results: vec![0; fi.parts.len()],
-    //     };
+        let mut resp = CheckPartsResp {
+            results: vec![0; fi.parts.len()],
+        };
 
-    //     let erasure = &fi.erasure;
-    //     for (i, part) in fi.parts.iter().enumerate() {
-    //         let checksum_info = erasure.get_checksum_info(part.number);
-    //         let part_path = Path::new(&volume_dir)
-    //             .join(path)
-    //             .join(fi.data_dir.map_or("".to_string(), |dir| dir.to_string()))
-    //             .join(format!("part.{}", part.number));
-    //         let err = self
-    //             .bitrot_verify(
-    //                 &part_path,
-    //                 erasure.shard_file_size(part.size as i64) as usize,
-    //                 checksum_info.algorithm,
-    //                 &checksum_info.hash,
-    //                 erasure.shard_size(),
-    //             )
-    //             .await
-    //             .err();
-    //         resp.results[i] = conv_part_err_to_int(&err);
-    //         if resp.results[i] == CHECK_PART_UNKNOWN {
-    //             if let Some(err) = err {
-    //                 if err == Error::FileAccessDenied {
-    //                     continue;
-    //                 }
-    //                 info!("part unknown, disk: {}, path: {:?}", self.to_string(), part_path);
-    //             }
-    //         }
-    //     }
+        let erasure = &fi.erasure;
+        for (i, part) in fi.parts.iter().enumerate() {
+            let checksum_info = erasure.get_checksum_info(part.number);
+            let part_path = Path::new(&volume_dir)
+                .join(path)
+                .join(fi.data_dir.map_or("".to_string(), |dir| dir.to_string()))
+                .join(format!("part.{}", part.number));
+            let err = self
+                .bitrot_verify(
+                    &part_path,
+                    erasure.shard_file_size(part.size as i64) as usize,
+                    checksum_info.algorithm,
+                    &checksum_info.hash,
+                    erasure.shard_size(),
+                )
+                .await
+                .err();
+            resp.results[i] = conv_part_err_to_int(&err);
+            if resp.results[i] == CHECK_PART_UNKNOWN {
+                if let Some(err) = err {
+                    if err == Error::FileAccessDenied {
+                        continue;
+                    }
+                    info!("part unknown, disk: {}, path: {:?}", self.to_string(), part_path);
+                }
+            }
+        }
 
-    //     Ok(resp)
-    // }
+        Ok(resp)
+    }
 
     #[tracing::instrument(skip(self))]
     async fn check_parts(&self, volume: &str, path: &str, fi: &FileInfo) -> Result<CheckPartsResp> {

@@ -7974,6 +7974,7 @@ dependencies = [
  "path-absolutize",
  "rustfs-disk-core",
  "rustfs-endpoints",
+ "rustfs-erasure-coding",
  "rustfs-filemeta",
  "rustfs-utils",
  "tempfile",

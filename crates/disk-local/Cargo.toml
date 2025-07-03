@@ -36,6 +36,7 @@ tempfile.workspace = true
 path-absolutize.workspace = true
 time.workspace = true
 rustfs-endpoints.workspace = true
+rustfs-erasure-coding.workspace = true
 
 [target.'cfg(not(windows))'.dependencies]
 nix.workspace = true 
