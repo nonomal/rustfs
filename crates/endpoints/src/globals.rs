@@ -6,6 +6,7 @@ use crate::PoolEndpoints;
 use crate::SetupType;
 
 lazy_static! {
+    static ref GLOBAL_RUSTFS_ADDR: OnceLock<String> = OnceLock::new();
     static ref GLOBAL_RUSTFS_PORT: OnceLock<u16> = OnceLock::new();
     static ref GLOBAL_IS_ERASURE: OnceLock<bool> = OnceLock::new();
     static ref GLOBAL_IS_DIST_ERASURE: OnceLock<bool> = OnceLock::new();
@@ -66,4 +67,12 @@ pub fn get_global_endpoints() -> EndpointServerPools {
     } else {
         EndpointServerPools::default()
     }
+}
+
+pub fn set_global_addr(addr: &str) {
+    GLOBAL_RUSTFS_ADDR.get_or_init(|| addr.to_string());
+}
+
+pub fn get_global_addr() -> String {
+    GLOBAL_RUSTFS_ADDR.get().unwrap_or(&"".to_string()).clone()
 }

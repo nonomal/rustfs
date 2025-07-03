@@ -7861,6 +7861,7 @@ dependencies = [
  "rustfs-common",
  "rustfs-config",
  "rustfs-ecstore",
+ "rustfs-endpoints",
  "rustfs-filemeta",
  "rustfs-iam",
  "rustfs-madmin",

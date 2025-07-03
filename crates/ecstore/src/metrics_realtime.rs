@@ -15,7 +15,8 @@
 use std::collections::{HashMap, HashSet};
 
 use chrono::Utc;
-use rustfs_common::globals::{GLOBAL_Local_Node_Name, GLOBAL_Rustfs_Addr};
+use rustfs_common::globals::GLOBAL_Local_Node_Name;
+use rustfs_endpoints::get_global_addr;
 use rustfs_madmin::metrics::{DiskIOStats, DiskMetric, RealtimeMetrics};
 use rustfs_utils::os::get_drive_stats;
 use serde::{Deserialize, Serialize};
@@ -78,7 +79,7 @@ pub async fn collect_local_metrics(types: MetricType, opts: &CollectMetricsOpts)
         return real_time_metrics;
     }
 
-    let mut by_host_name = GLOBAL_Rustfs_Addr.read().await.clone();
+    let mut by_host_name = get_global_addr();
     if !opts.hosts.is_empty() {
         let server = get_local_server_property().await;
         if opts.hosts.contains(&server.endpoint) {

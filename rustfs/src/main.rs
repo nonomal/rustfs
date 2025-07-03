@@ -42,7 +42,6 @@ use hyper_util::{
     service::TowerToHyperService,
 };
 use license::init_license;
-use rustfs_common::globals::set_global_addr;
 use rustfs_config::{DEFAULT_ACCESS_KEY, DEFAULT_SECRET_KEY, RUSTFS_TLS_CERT, RUSTFS_TLS_KEY};
 use rustfs_ecstore::StorageAPI;
 use rustfs_ecstore::bucket::metadata_sys::init_bucket_metadata_sys;
@@ -52,14 +51,12 @@ use rustfs_ecstore::config::GLOBAL_ConfigSys;
 use rustfs_ecstore::heal::background_heal_ops::init_auto_heal;
 use rustfs_ecstore::rpc::make_server;
 use rustfs_ecstore::store_api::BucketOptions;
-use rustfs_ecstore::{
-    endpoints::EndpointServerPools,
-    heal::data_scanner::init_data_scanner,
-    set_global_endpoints,
-    store::{ECStore, init_local_disks},
-    update_erasure_type,
-};
 use rustfs_ecstore::{global::set_global_rustfs_port, notification_sys::new_global_notification_sys};
+use rustfs_ecstore::{
+    heal::data_scanner::init_data_scanner,
+    store::{ECStore, init_local_disks},
+};
+use rustfs_endpoints::{EndpointServerPools, set_global_addr, set_global_endpoints, update_erasure_type};
 use rustfs_iam::init_iam_sys;
 use rustfs_obs::{SystemObserver, init_obs, set_global_guard};
 use rustfs_protos::proto_gen::node_service::node_service_server::NodeServiceServer;
@@ -192,10 +189,10 @@ async fn run(opt: config::Opt) -> Result<()> {
         }
     }
 
-    set_global_addr(&opt.address).await;
+    set_global_addr(&opt.address);
 
     set_global_endpoints(endpoint_pools.as_ref().clone());
-    update_erasure_type(setup_type).await;
+    update_erasure_type(setup_type);
 
     // Initialize the local disk
     init_local_disks(endpoint_pools.clone()).await.map_err(Error::other)?;

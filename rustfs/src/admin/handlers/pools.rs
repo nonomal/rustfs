@@ -14,7 +14,8 @@
 
 use http::{HeaderMap, StatusCode};
 use matchit::Params;
-use rustfs_ecstore::{GLOBAL_Endpoints, new_object_layer_fn};
+use rustfs_ecstore::new_object_layer_fn;
+use rustfs_endpoints::get_global_endpoints;
 use s3s::{Body, S3Error, S3ErrorCode, S3Request, S3Response, S3Result, header::CONTENT_TYPE, s3_error};
 use serde::Deserialize;
 use serde_urlencoded::from_bytes;
@@ -36,10 +37,7 @@ impl Operation for ListPools {
             return Err(S3Error::with_message(S3ErrorCode::InternalError, "Not init".to_string()));
         };
 
-        let Some(endpoints) = GLOBAL_Endpoints.get() else {
-            return Err(s3_error!(NotImplemented));
-        };
-
+        let endpoints = get_global_endpoints();
         if endpoints.legacy() {
             return Err(s3_error!(NotImplemented));
         }
@@ -79,10 +77,7 @@ impl Operation for StatusPool {
     async fn call(&self, req: S3Request<Body>, _params: Params<'_, '_>) -> S3Result<S3Response<(StatusCode, Body)>> {
         warn!("handle StatusPool");
 
-        let Some(endpoints) = GLOBAL_Endpoints.get() else {
-            return Err(s3_error!(NotImplemented));
-        };
-
+        let endpoints = get_global_endpoints();
         if endpoints.legacy() {
             return Err(s3_error!(NotImplemented));
         }
@@ -138,10 +133,7 @@ impl Operation for StartDecommission {
     async fn call(&self, req: S3Request<Body>, _params: Params<'_, '_>) -> S3Result<S3Response<(StatusCode, Body)>> {
         warn!("handle StartDecommission");
 
-        let Some(endpoints) = GLOBAL_Endpoints.get() else {
-            return Err(s3_error!(NotImplemented));
-        };
-
+        let endpoints = get_global_endpoints();
         if endpoints.legacy() {
             return Err(s3_error!(NotImplemented));
         }
@@ -221,10 +213,7 @@ impl Operation for CancelDecommission {
     async fn call(&self, req: S3Request<Body>, _params: Params<'_, '_>) -> S3Result<S3Response<(StatusCode, Body)>> {
         warn!("handle CancelDecommission");
 
-        let Some(endpoints) = GLOBAL_Endpoints.get() else {
-            return Err(s3_error!(NotImplemented));
-        };
-
+        let endpoints = get_global_endpoints();
         if endpoints.legacy() {
             return Err(s3_error!(NotImplemented));
         }

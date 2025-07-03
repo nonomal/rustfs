@@ -101,6 +101,7 @@ uuid = { workspace = true }
 rustfs-filemeta.workspace = true
 rustfs-rio.workspace = true
 zip = { workspace = true }
+rustfs-endpoints.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libsystemd.workspace = true

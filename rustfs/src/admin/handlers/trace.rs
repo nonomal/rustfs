@@ -15,7 +15,8 @@
 use http::StatusCode;
 use hyper::Uri;
 use matchit::Params;
-use rustfs_ecstore::{GLOBAL_Endpoints, rpc::PeerRestClient};
+use rustfs_ecstore::rpc::PeerRestClient;
+use rustfs_endpoints::get_global_endpoints;
 use rustfs_madmin::service_commands::ServiceTraceOpts;
 use s3s::{Body, S3Request, S3Response, S3Result, s3_error};
 use tracing::warn;
@@ -41,10 +42,7 @@ impl Operation for Trace {
         let _trace_opts = extract_trace_options(&req.uri)?;
 
         // let (tx, rx) = mpsc::channel(10000);
-        let _perrs = match GLOBAL_Endpoints.get() {
-            Some(ep) => PeerRestClient::new_clients(ep.clone()).await,
-            None => (Vec::new(), Vec::new()),
-        };
+        let _perrs = PeerRestClient::new_clients(get_global_endpoints()).await;
         return Err(s3_error!(NotImplemented));
     }
 }
