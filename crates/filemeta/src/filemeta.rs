@@ -2134,7 +2134,7 @@ async fn read_more<R: AsyncRead + Unpin>(
     Ok(())
 }
 
-pub async fn read_xl_meta_no_data<R: AsyncRead + Unpin>(reader: &mut R, size: usize) -> Result<Vec<u8>> {
+pub async fn read_xl_meta_no_data<R: AsyncRead + Unpin>(reader: &mut R, size: usize) -> Result<Bytes> {
     use tokio::io::AsyncReadExt;
 
     let mut initial = size;
@@ -2154,7 +2154,7 @@ pub async fn read_xl_meta_no_data<R: AsyncRead + Unpin>(reader: &mut R, size: us
         1 => match minor {
             0 => {
                 read_more(reader, &mut buf, size, size, has_full).await?;
-                Ok(buf)
+                Ok(buf.into())
             }
             1..=3 => {
                 let (sz, tmp_buf) = FileMeta::read_bytes_header(tmp_buf)?;
@@ -2162,7 +2162,7 @@ pub async fn read_xl_meta_no_data<R: AsyncRead + Unpin>(reader: &mut R, size: us
 
                 if minor < 2 {
                     read_more(reader, &mut buf, size, want, has_full).await?;
-                    return Ok(buf[..want].to_vec());
+                    return Ok(buf[..want].to_vec().into());
                 }
 
                 let want_max = usize::min(want + MSGP_UINT32_SIZE, size);
@@ -2178,7 +2178,7 @@ pub async fn read_xl_meta_no_data<R: AsyncRead + Unpin>(reader: &mut R, size: us
 
                 want += tmp.len() - other_size;
 
-                Ok(buf[..want].to_vec())
+                Ok(buf[..want].to_vec().into())
             }
             _ => Err(Error::other(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,

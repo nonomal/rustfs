@@ -487,7 +487,7 @@ impl FileInfoVersions {
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct RawFileInfo {
-    pub buf: Vec<u8>,
+    pub buf: Bytes,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

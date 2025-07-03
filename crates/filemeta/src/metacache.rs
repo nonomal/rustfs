@@ -14,6 +14,7 @@
 
 use crate::error::{Error, Result};
 use crate::{FileInfo, FileInfoVersions, FileMeta, FileMetaShallowVersion, VersionType, merge_file_meta_versions};
+use bytes::Bytes;
 use rmp::Marker;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
@@ -53,7 +54,7 @@ pub struct MetaCacheEntry {
     pub name: String,
     /// Metadata. If none is present it is not an object but only a prefix.
     /// Entries without metadata will only be present in non-recursive scans.
-    pub metadata: Vec<u8>,
+    pub metadata: Bytes,
 
     /// cached contains the metadata if decoded.
     #[serde(skip)]
@@ -410,7 +411,7 @@ impl MetaCacheEntries {
                 ..Default::default()
             }),
             reusable: true,
-            metadata,
+            metadata: metadata.into(),
         };
 
         warn!("decommission_pool: entries resolve entry selected {:?}", new_selected.name);
@@ -722,7 +723,7 @@ impl<R: AsyncRead + Unpin> MetacacheReader<R> {
 
         let entry = Some(MetaCacheEntry {
             name,
-            metadata,
+            metadata: metadata.into(),
             cached: None,
             reusable: false,
         });
@@ -867,7 +868,7 @@ mod tests {
         for i in 0..10 {
             let info = MetaCacheEntry {
                 name: format!("item{i}"),
-                metadata: vec![0u8, 10],
+                metadata: vec![0u8, 10].into(),
                 cached: None,
                 reusable: false,
             };

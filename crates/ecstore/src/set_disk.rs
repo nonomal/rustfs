@@ -1281,21 +1281,21 @@ impl SetDisks {
         let mut meta_file_infos = vec![FileInfo::default(); fileinfos.len()];
         let mut metadata_shallow_versions = vec![None; fileinfos.len()];
 
-        let mut v2_bufs = {
-            if !read_data {
-                vec![Vec::new(); fileinfos.len()]
-            } else {
-                Vec::new()
-            }
-        };
+        // let mut v2_bufs = {
+        //     if !read_data {
+        //         vec![Vec::new(); fileinfos.len()]
+        //     } else {
+        //         Vec::new()
+        //     }
+        // };
 
         let mut errs = errs;
 
         for (idx, info_op) in fileinfos.iter().enumerate() {
             if let Some(info) = info_op {
-                if !read_data {
-                    v2_bufs[idx] = info.buf.clone();
-                }
+                // if !read_data {
+                //     v2_bufs[idx] = info.buf.clone().to_vec();
+                // }
 
                 let xlmeta = match FileMeta::load(&info.buf) {
                     Ok(res) => res,

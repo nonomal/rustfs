@@ -1205,7 +1205,7 @@ async fn merge_entry_channels(
 
                         if let Ok(meta) = xl.marshal_msg() {
                             if let Some(b) = best.as_mut() {
-                                b.metadata = meta;
+                                b.metadata = meta.into();
                                 b.cached = Some(xl.clone());
                             }
                         }

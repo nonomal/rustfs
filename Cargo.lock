@@ -7963,6 +7963,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustfs-disk-local"
+version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "nix 0.30.1",
+ "path-absolutize",
+ "rustfs-disk-core",
+ "rustfs-filemeta",
+ "rustfs-utils",
+ "tempfile",
+ "time",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "rustfs-ecstore"
 version = "0.0.1"
 dependencies = [

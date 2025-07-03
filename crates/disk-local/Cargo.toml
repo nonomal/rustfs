@@ -30,6 +30,11 @@ async-trait.workspace = true
 bytes.workspace = true
 tokio = { workspace = true, features = ["fs", "io-util", "sync"] }
 uuid = { workspace = true, features = ["v4", "serde"] }
+rustfs-utils = { workspace = true, features = ["os", "path"] }
+tracing.workspace = true
+tempfile.workspace = true
+path-absolutize.workspace = true
+time.workspace = true
 
 [target.'cfg(not(windows))'.dependencies]
 nix.workspace = true 
