@@ -8369,6 +8369,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustfs-scanner"
+version = "0.0.1"
+dependencies = [
+ "futures",
+ "lazy_static",
+ "rustfs-disk-core",
+ "rustfs-ecstore",
+ "rustfs-endpoints",
+ "rustfs-madmin",
+ "rustfs-utils",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "rustfs-signer"
 version = "0.0.1"
 dependencies = [

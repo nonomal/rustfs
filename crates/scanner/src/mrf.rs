@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::heal::background_heal_ops::{heal_bucket, heal_object};
-use crate::heal::heal_commands::{HEAL_DEEP_SCAN, HEAL_NORMAL_SCAN};
+use crate::{
+    background_heal_ops::{heal_bucket, heal_object},
+    heal_commands::{HEAL_DEEP_SCAN, HEAL_NORMAL_SCAN},
+};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use regex::Regex;

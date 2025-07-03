@@ -12,13 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod background_heal_ops;
-pub mod data_scanner;
-pub mod data_scanner_metric;
-pub mod data_usage;
-pub mod data_usage_cache;
-pub mod error;
-pub mod heal_commands;
-pub mod heal_ops;
-pub mod mrf;
-pub mod traits;
+use crate::{data_scanner::ShouldSleepFn, data_usage_cache::{DataUsageCache, DataUsageEntry}, heal_commands::{HealScanMode, HealingTracker}};
+use rustfs_disk_core::error::Result;
+use std::fmt::Debug;
+use tokio::sync::mpsc::Sender;
+
+#[async_trait::async_trait]
+pub trait ScannerAPI: Debug + Send + Sync + 'static {
+    async fn ns_scanner(
+        &self,
+        cache: &DataUsageCache,
+        updates: Sender<DataUsageEntry>,
+        scan_mode: HealScanMode,
+        we_sleep: ShouldSleepFn,
+    ) -> Result<DataUsageCache>;
+    async fn healing(&self) -> Option<HealingTracker>;
+}

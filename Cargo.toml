@@ -40,6 +40,7 @@ members = [
     "crates/disk-local",
     "crates/erasure-coding",
     "crates/endpoints",
+    "crates/scanner",
 ]
 resolver = "2"
 
@@ -82,6 +83,8 @@ rustfs-disk-core = { path = "crates/disk-core", version= "0.0.1" }
 rustfs-disk-local = { path = "crates/disk-local", version= "0.0.1" }
 rustfs-erasure-coding = { path = "crates/erasure-coding", version= "0.0.1" }
 rustfs-endpoints = { path = "crates/endpoints", version= "0.0.1" }
+rustfs-scanner = { path = "crates/scanner", version= "0.0.1" }
+ 
 
 aes-gcm = { version = "0.10.3", features = ["std"] }
 arc-swap = "1.7.1"
