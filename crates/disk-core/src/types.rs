@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use crate::error::Error;
-use rustfs_filemeta::FileInfo;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -90,34 +89,6 @@ pub struct Info {
     pub name: String,
     pub rotational: bool,
     pub nrrequests: u64,
-}
-
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct FileInfoVersions {
-    // Name of the volume.
-    pub volume: String,
-
-    // Name of the file.
-    pub name: String,
-
-    // Represents the latest mod time of the
-    // latest version.
-    pub latest_mod_time: Option<OffsetDateTime>,
-
-    pub versions: Vec<FileInfo>,
-    pub free_versions: Vec<FileInfo>,
-}
-
-impl FileInfoVersions {
-    pub fn find_version_index(&self, v: &str) -> Option<usize> {
-        if v.is_empty() {
-            return None;
-        }
-
-        let vid = Uuid::parse_str(v).unwrap_or_default();
-
-        self.versions.iter().position(|v| v.version_id == Some(vid))
-    }
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]

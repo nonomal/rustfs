@@ -247,34 +247,34 @@ impl From<DiskError> for std::io::Error {
     }
 }
 
-// impl From<tonic::Status> for DiskError {
-//     fn from(e: tonic::Status) -> Self {
-//         DiskError::other(e.message().to_string())
-//     }
-// }
+impl From<tonic::Status> for DiskError {
+    fn from(e: tonic::Status) -> Self {
+        DiskError::other(e.message().to_string())
+    }
+}
 
-// impl From<rustfs_protos::proto_gen::node_service::Error> for DiskError {
-//     fn from(e: rustfs_protos::proto_gen::node_service::Error) -> Self {
-//         if let Some(err) = DiskError::from_u32(e.code) {
-//             if matches!(err, DiskError::Io(_)) {
-//                 DiskError::other(e.error_info)
-//             } else {
-//                 err
-//             }
-//         } else {
-//             DiskError::other(e.error_info)
-//         }
-//     }
-// }
+impl From<rustfs_protos::proto_gen::node_service::Error> for DiskError {
+    fn from(e: rustfs_protos::proto_gen::node_service::Error) -> Self {
+        if let Some(err) = DiskError::from_u32(e.code) {
+            if matches!(err, DiskError::Io(_)) {
+                DiskError::other(e.error_info)
+            } else {
+                err
+            }
+        } else {
+            DiskError::other(e.error_info)
+        }
+    }
+}
 
-// impl From<DiskError> for rustfs_protos::proto_gen::node_service::Error {
-//     fn from(e: DiskError) -> Self {
-//         rustfs_protos::proto_gen::node_service::Error {
-//             code: e.to_u32(),
-//             error_info: e.to_string(),
-//         }
-//     }
-// }
+impl From<DiskError> for rustfs_protos::proto_gen::node_service::Error {
+    fn from(e: DiskError) -> Self {
+        rustfs_protos::proto_gen::node_service::Error {
+            code: e.to_u32(),
+            error_info: e.to_string(),
+        }
+    }
+}
 
 impl From<serde_json::Error> for DiskError {
     fn from(e: serde_json::Error) -> Self {

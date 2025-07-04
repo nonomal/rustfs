@@ -41,7 +41,7 @@ use crate::{
     heal_commands::{init_healing_tracker, load_healing_tracker},
     heal_ops::NOP_HEAL,
 };
-use rustfs_disk_core::{BUCKET_META_PREFIX, DiskAPI, DiskInfoOptions, RUSTFS_META_BUCKET, error::DiskError};
+use rustfs_disk_core::{BUCKET_META_PREFIX, DiskAPI as _, DiskInfoOptions, RUSTFS_META_BUCKET, error::DiskError};
 use rustfs_ecstore::error::{Error, Result};
 use rustfs_ecstore::{
     config::RUSTFS_CONFIG_PREFIX,

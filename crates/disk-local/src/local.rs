@@ -37,9 +37,8 @@ use rustfs_disk_core::error_conv::{to_access_error, to_file_error, to_unformatte
 use rustfs_disk_core::format::FormatV3;
 use rustfs_disk_core::{
     BUCKET_META_PREFIX, CheckPartsResp, DeleteOptions, DiskAPI, DiskInfo, DiskInfoOptions, DiskLocation, FORMAT_CONFIG_FILE,
-    FileInfoVersions, RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq,
-    ReadMultipleResp, ReadOptions, RenameDataResp, STORAGE_FORMAT_FILE_BACKUP, UpdateMetadataOpts, VolumeInfo, WalkDirOptions,
-    conv_part_err_to_int,
+    RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq, ReadMultipleResp, ReadOptions,
+    RenameDataResp, STORAGE_FORMAT_FILE_BACKUP, UpdateMetadataOpts, VolumeInfo, WalkDirOptions, conv_part_err_to_int,
 };
 use rustfs_disk_core::{
     CHECK_PART_FILE_CORRUPT, CHECK_PART_FILE_NOT_FOUND, CHECK_PART_SUCCESS, CHECK_PART_UNKNOWN, CHECK_PART_VOLUME_NOT_FOUND,
@@ -62,8 +61,8 @@ use bytes::Bytes;
 use path_absolutize::Absolutize;
 // use rustfs_common::defer;
 use rustfs_filemeta::{
-    Cache, FileInfo, FileInfoOpts, FileMeta, MetaCacheEntry, MetacacheWriter, Opts, RawFileInfo, UpdateFn, get_file_info,
-    read_xl_meta_no_data,
+    Cache, FileInfo, FileInfoOpts, FileInfoVersions, FileMeta, MetaCacheEntry, MetacacheWriter, Opts, RawFileInfo, UpdateFn,
+    get_file_info, read_xl_meta_no_data,
 };
 use time::OffsetDateTime;
 

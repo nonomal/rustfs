@@ -38,9 +38,15 @@ members = [
     "crates/zip", # ZIP file handling and compression
     "crates/disk-core",
     "crates/disk-local",
+    "crates/disk-remote",
     "crates/erasure-coding",
     "crates/endpoints",
     "crates/scanner",
+    "crates/scanner-core",
+    "crates/store-core",
+    "crates/store-disk",
+    "crates/store-utils",
+    "crates/store-rpc",
 ]
 resolver = "2"
 
@@ -81,9 +87,15 @@ rustfs-signer = { path = "crates/signer", version = "0.0.1" }
 rustfs-workers = { path = "crates/workers", version = "0.0.1" }
 rustfs-disk-core = { path = "crates/disk-core", version= "0.0.1" }
 rustfs-disk-local = { path = "crates/disk-local", version= "0.0.1" }
+rustfs-disk-remote = { path = "crates/disk-remote", version= "0.0.1" }
 rustfs-erasure-coding = { path = "crates/erasure-coding", version= "0.0.1" }
 rustfs-endpoints = { path = "crates/endpoints", version= "0.0.1" }
 rustfs-scanner = { path = "crates/scanner", version= "0.0.1" }
+rustfs-store-core = { path = "crates/store-core", version= "0.0.1" }
+rustfs-scanner-core = { path = "crates/scanner-core", version= "0.0.1" }
+rustfs-store-disk = { path = "crates/store-disk", version= "0.0.1" }
+rustfs-store-rpc = { path = "crates/store-rpc", version= "0.0.1" }
+rustfs-store-utils = { path = "crates/store-utils", version= "0.0.1" }
  
 
 aes-gcm = { version = "0.10.3", features = ["std"] }

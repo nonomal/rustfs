@@ -97,6 +97,7 @@ rustfs-disk-core.workspace = true
 rustfs-disk-local.workspace = true
 rustfs-endpoints.workspace = true
 
+
 [target.'cfg(not(windows))'.dependencies]
 nix = { workspace = true }
 

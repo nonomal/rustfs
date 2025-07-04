@@ -16,7 +16,7 @@ use crate::error::{Error, Result};
 use crate::types::*;
 use bytes::Bytes;
 use rustfs_endpoints::Endpoint;
-use rustfs_filemeta::{FileInfo, RawFileInfo};
+use rustfs_filemeta::{FileInfo, FileInfoVersions, RawFileInfo};
 use std::fmt::Debug;
 use std::path::PathBuf;
 use tokio::io::{AsyncRead, AsyncWrite};
