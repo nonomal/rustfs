@@ -13,12 +13,12 @@
 // limitations under the License.
 
 use super::{Config, GLOBAL_StorageClass, storageclass};
-use crate::disk::RUSTFS_META_BUCKET;
 use crate::error::{Error, Result};
 use crate::store_api::{ObjectInfo, ObjectOptions, PutObjReader, StorageAPI};
 use http::HeaderMap;
 use lazy_static::lazy_static;
 use rustfs_config::DEFAULT_DELIMITER;
+use rustfs_disk_core::RUSTFS_META_BUCKET;
 use rustfs_utils::path::SLASH_SEPARATOR;
 use std::collections::HashSet;
 use std::sync::Arc;

@@ -1,26 +1,32 @@
+use bytes::Bytes;
 use rustfs_disk_core::error::{Error, Result};
-use rustfs_disk_core::{DiskAPI, DiskLocation, VolumeInfo};
-use rustfs_disk_core::{DiskOption, WalkDirOptions};
+use rustfs_disk_core::{DiskAPI, FileWriter};
+use rustfs_disk_core::{FileReader, types::*};
 use rustfs_disk_local::local::LocalDisk;
+use rustfs_disk_remote::remote::RemoteDisk;
 use rustfs_filemeta::FileInfo;
 use rustfs_filemeta::FileInfoVersions;
 use rustfs_filemeta::RawFileInfo;
+use std::path::PathBuf;
 use std::sync::Arc;
+use uuid::Uuid;
 
-pub async fn new_disk(ep: &rustfs_endpoints::Endpoint, opt: &DiskOption) -> Result<Arc<Disk>> {
+pub type DiskStore = Arc<Disk>;
+
+pub async fn new_disk(ep: &rustfs_endpoints::Endpoint, opt: &DiskOption) -> Result<DiskStore> {
     if ep.is_local {
         let s = LocalDisk::new(ep, opt.cleanup).await?;
-        Ok(Arc::new(Disk::Local(Box::new(s))))
+        Ok(Arc::new(Disk::Local(s)))
     } else {
         let remote_disk = RemoteDisk::new(ep, opt).await?;
-        Ok(Arc::new(Disk::Remote(Box::new(remote_disk))))
+        Ok(Arc::new(Disk::Remote(remote_disk)))
     }
 }
 
 #[derive(Debug)]
 pub enum Disk {
-    Local(Box<LocalDisk>),
-    Remote(Box<RemoteDisk>),
+    Local(LocalDisk),
+    Remote(RemoteDisk),
 }
 
 #[async_trait::async_trait]
@@ -146,7 +152,7 @@ impl DiskAPI for Disk {
     }
 
     #[tracing::instrument(skip(self, wr))]
-    async fn walk_dir<W: AsyncWrite + Unpin + Send>(&self, opts: WalkDirOptions, wr: &mut W) -> Result<()> {
+    async fn walk_dir(&self, opts: WalkDirOptions, wr: &mut FileWriter) -> Result<()> {
         match self {
             Disk::Local(local_disk) => local_disk.walk_dir(opts, wr).await,
             Disk::Remote(remote_disk) => remote_disk.walk_dir(opts, wr).await,
@@ -373,11 +379,11 @@ impl DiskAPI for Disk {
     //     }
     // }
 
-    // #[tracing::instrument(skip(self))]
-    // async fn healing(&self) -> Option<HealingTracker> {
-    //     match self {
-    //         Disk::Local(local_disk) => local_disk.healing().await,
-    //         Disk::Remote(remote_disk) => remote_disk.healing().await,
-    //     }
-    // }
+    #[tracing::instrument(skip(self))]
+    async fn healing(&self) -> Option<Bytes> {
+        match self {
+            Disk::Local(local_disk) => local_disk.healing().await,
+            Disk::Remote(remote_disk) => remote_disk.healing().await,
+        }
+    }
 }

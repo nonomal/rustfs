@@ -17,29 +17,21 @@
 use crate::bitrot::{create_bitrot_reader, create_bitrot_writer};
 use crate::bucket::lifecycle::lifecycle::TRANSITION_COMPLETE;
 use crate::client::{object_api_utils::extract_etag, transition_api::ReaderImpl};
-use crate::disk::error_reduce::{OBJECT_OP_IGNORED_ERRS, reduce_read_quorum_errs, reduce_write_quorum_errs};
-use crate::disk::{
-    self, CHECK_PART_DISK_NOT_FOUND, CHECK_PART_FILE_CORRUPT, CHECK_PART_FILE_NOT_FOUND, CHECK_PART_SUCCESS,
-    conv_part_err_to_int, has_part_err,
-};
 use crate::erasure_coding;
 use crate::erasure_coding::bitrot_verify;
 use crate::error::ObjectApiError;
 use crate::error::{Error, Result};
 use crate::global::GLOBAL_MRFState;
 use crate::global::{GLOBAL_LocalNodeName, GLOBAL_TierConfigMgr};
+use crate::heal::data_scanner::{HEAL_DELETE_DANGLING, globalHealConfig};
 use crate::heal::data_usage_cache::DataUsageCache;
 use crate::heal::heal_ops::{HealEntryFn, HealSequence};
-use crate::store_api::ObjectToDelete;
+use crate::heal::mrf::PartialOperation;
+use crate::store_api::{ListObjectVersionsInfo, ObjectToDelete};
 use crate::{
     bucket::lifecycle::bucket_lifecycle_ops::{gen_transition_objname, get_transitioned_object_reader, put_restore_opts},
     cache_value::metacache_set::{ListPathRawOptions, list_path_raw},
     config::{GLOBAL_StorageClass, storageclass},
-    disk::{
-        CheckPartsResp, DeleteOptions, DiskAPI, DiskInfo, DiskInfoOptions, DiskOption, DiskStore, FileInfoVersions,
-        RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq, ReadMultipleResp, ReadOptions,
-        UpdateMetadataOpts, error::DiskError, format::FormatV3, new_disk,
-    },
     error::{StorageError, to_object_err},
     event::name::EventName,
     event_notification::{EventArgs, send_event},
@@ -60,11 +52,6 @@ use crate::{
     },
     store_init::load_format_erasure,
 };
-use crate::{disk::STORAGE_FORMAT_FILE, heal::mrf::PartialOperation};
-use crate::{
-    heal::data_scanner::{HEAL_DELETE_DANGLING, globalHealConfig},
-    store_api::ListObjectVersionsInfo,
-};
 use bytes::Bytes;
 use bytesize::ByteSize;
 use chrono::Utc;
@@ -73,8 +60,20 @@ use glob::Pattern;
 use http::HeaderMap;
 use md5::{Digest as Md5Digest, Md5};
 use rand::{Rng, seq::SliceRandom};
+use rustfs_disk_core::error_reduce::{OBJECT_OP_IGNORED_ERRS, reduce_read_quorum_errs, reduce_write_quorum_errs};
+use rustfs_disk_core::{
+    CHECK_PART_DISK_NOT_FOUND, CHECK_PART_FILE_CORRUPT, CHECK_PART_FILE_NOT_FOUND, CHECK_PART_SUCCESS, CheckPartsResp,
+    DeleteOptions, DiskInfoOptions, RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq,
+    ReadMultipleResp, ReadOptions, STORAGE_FORMAT_FILE, UpdateMetadataOpts, conv_part_err_to_int, has_part_err,
+};
+use rustfs_disk_core::{
+    DiskAPI, DiskInfo, DiskOption,
+    error::DiskError,
+    format::{DistributionAlgoVersion, FormatV3},
+};
 use rustfs_endpoints::Endpoint;
 use rustfs_endpoints::is_dist_erasure;
+use rustfs_filemeta::FileInfoVersions;
 use rustfs_filemeta::headers::RESERVED_METADATA_PREFIX_LOWER;
 use rustfs_filemeta::{
     FileInfo, FileMeta, FileMetaShallowVersion, MetaCacheEntries, MetaCacheEntry, MetadataResolutionParams, ObjectPartInfo,
@@ -85,6 +84,7 @@ use rustfs_filemeta::{
 use rustfs_lock::{LockApi, namespace_lock::NsLockMap};
 use rustfs_madmin::heal_commands::{HealDriveInfo, HealResultItem};
 use rustfs_rio::{EtagResolvable, HashReader, TryGetIndex as _, WarpReader};
+use rustfs_store_disk::disk::{DiskStore, new_disk};
 use rustfs_utils::{
     HashAlgorithm,
     crypto::{base64_decode, base64_encode, hex},
@@ -334,7 +334,7 @@ impl SetDisks {
         dst_bucket: &str,
         dst_object: &str,
         write_quorum: usize,
-    ) -> disk::error::Result<(Vec<Option<DiskStore>>, Option<Vec<u8>>, Option<Uuid>)> {
+    ) -> rustfs_disk_core::error::Result<(Vec<Option<DiskStore>>, Option<Vec<u8>>, Option<Uuid>)> {
         let mut futures = Vec::with_capacity(disks.len());
 
         // let mut ress = Vec::with_capacity(disks.len());
@@ -478,7 +478,7 @@ impl SetDisks {
         object: &str,
         data_dir: &str,
         write_quorum: usize,
-    ) -> disk::error::Result<()> {
+    ) -> rustfs_disk_core::error::Result<()> {
         let file_path = Arc::new(format!("{object}/{data_dir}"));
         let bucket = Arc::new(bucket.to_string());
         let futures = disks.iter().map(|disk| {
@@ -558,7 +558,7 @@ impl SetDisks {
         dst_object: &str,
         meta: Bytes,
         write_quorum: usize,
-    ) -> disk::error::Result<Vec<Option<DiskStore>>> {
+    ) -> rustfs_disk_core::error::Result<Vec<Option<DiskStore>>> {
         let src_bucket = Arc::new(src_bucket.to_string());
         let src_object = Arc::new(src_object.to_string());
         let dst_bucket = Arc::new(dst_bucket.to_string());
@@ -657,7 +657,7 @@ impl SetDisks {
         prefix: &str,
         files: &[FileInfo],
         write_quorum: usize,
-    ) -> disk::error::Result<()> {
+    ) -> rustfs_disk_core::error::Result<()> {
         let mut futures = Vec::with_capacity(disks.len());
         let mut errs = Vec::with_capacity(disks.len());
 
@@ -918,7 +918,7 @@ impl SetDisks {
         parts_metadata: &[FileInfo],
         errs: &[Option<DiskError>],
         default_parity_count: usize,
-    ) -> disk::error::Result<(i32, i32)> {
+    ) -> rustfs_disk_core::error::Result<(i32, i32)> {
         let expected_rquorum = if default_parity_count == 0 {
             parts_metadata.len()
         } else {
@@ -1036,7 +1036,7 @@ impl SetDisks {
         mod_time: Option<OffsetDateTime>,
         etag: Option<String>,
         quorum: usize,
-    ) -> disk::error::Result<FileInfo> {
+    ) -> rustfs_disk_core::error::Result<FileInfo> {
         Self::find_file_info_in_quorum(metas, &mod_time, &etag, quorum)
     }
 
@@ -1045,7 +1045,7 @@ impl SetDisks {
         mod_time: &Option<OffsetDateTime>,
         etag: &Option<String>,
         quorum: usize,
-    ) -> disk::error::Result<FileInfo> {
+    ) -> rustfs_disk_core::error::Result<FileInfo> {
         if quorum < 1 {
             error!("find_file_info_in_quorum: quorum < 1");
             return Err(DiskError::ErasureReadQuorum);
@@ -1165,7 +1165,7 @@ impl SetDisks {
         version_id: &str,
         read_data: bool,
         healing: bool,
-    ) -> disk::error::Result<(Vec<FileInfo>, Vec<Option<DiskError>>)> {
+    ) -> rustfs_disk_core::error::Result<(Vec<FileInfo>, Vec<Option<DiskError>>)> {
         let mut ress = Vec::with_capacity(disks.len());
         let mut errors = Vec::with_capacity(disks.len());
         let opts = Arc::new(ReadOptions {
@@ -1483,6 +1483,7 @@ impl SetDisks {
 
         if new_disk.is_local() {
             if let Some(h) = new_disk.healing().await {
+                let h = HealingTracker::unmarshal_msg(h.as_ref()).unwrap_or_default();
                 if !h.finished {
                     GLOBAL_BackgroundHealState.push_heal_local_disks(&[new_disk.endpoint()]).await;
                 }
@@ -1536,7 +1537,7 @@ impl SetDisks {
         Err(Error::other("DriveID: not found"))
     }
 
-    async fn connect_endpoint(ep: &Endpoint) -> disk::error::Result<(DiskStore, FormatV3)> {
+    async fn connect_endpoint(ep: &Endpoint) -> rustfs_disk_core::error::Result<(DiskStore, FormatV3)> {
         let disk = new_disk(ep, &DiskOption::default()).await?;
 
         let fm = load_format_erasure(&disk, false).await?;
@@ -2034,7 +2035,7 @@ impl SetDisks {
         object: &str,
         fi: FileInfo,
         disks: &[Option<DiskStore>],
-    ) -> disk::error::Result<()> {
+    ) -> rustfs_disk_core::error::Result<()> {
         self.update_object_meta_with_opts(bucket, object, fi, disks, &UpdateMetadataOpts::default())
             .await
     }
@@ -2045,7 +2046,7 @@ impl SetDisks {
         fi: FileInfo,
         disks: &[Option<DiskStore>],
         opts: &UpdateMetadataOpts,
-    ) -> disk::error::Result<()> {
+    ) -> rustfs_disk_core::error::Result<()> {
         if fi.metadata.is_empty() {
             return Ok(());
         }
@@ -2241,7 +2242,7 @@ impl SetDisks {
         object: &str,
         version_id: &str,
         opts: &HealOpts,
-    ) -> disk::error::Result<(HealResultItem, Option<DiskError>)> {
+    ) -> rustfs_disk_core::error::Result<(HealResultItem, Option<DiskError>)> {
         info!("SetDisks heal_object");
         let mut result = HealResultItem {
             heal_item_type: HEAL_ITEM_OBJECT.to_string(),
@@ -2960,7 +2961,7 @@ impl SetDisks {
         errs: &[Option<DiskError>],
         data_errs_by_part: &HashMap<usize, Vec<usize>>,
         opts: ObjectOptions,
-    ) -> disk::error::Result<FileInfo> {
+    ) -> rustfs_disk_core::error::Result<FileInfo> {
         if let Ok(m) = is_object_dang_ling(meta_arr, errs, data_errs_by_part) {
             let mut tags = HashMap::new();
             tags.insert("set", self.set_index.to_string());
@@ -3197,38 +3198,39 @@ impl SetDisks {
                                 }
                             });
 
-                            // Calc usage
-                            let before = cache.info.last_update;
-                            let mut cache = match disk.ns_scanner(&cache, tx, heal_scan_mode, None).await {
-                                Ok(cache) => cache,
-                                Err(_) => {
-                                    if cache.info.last_update > before {
-                                        let _ = cache.save(&cache_name.to_string_lossy()).await;
-                                    }
-                                    let _ = task.await;
-                                    continue;
-                                }
-                            };
+                            // FIXME: TODO:
+                            // // Calc usage
+                            // let before = cache.info.last_update;
+                            // let mut cache = match disk.ns_scanner(&cache, tx, heal_scan_mode, None).await {
+                            //     Ok(cache) => cache,
+                            //     Err(_) => {
+                            //         if cache.info.last_update > before {
+                            //             let _ = cache.save(&cache_name.to_string_lossy()).await;
+                            //         }
+                            //         let _ = task.await;
+                            //         continue;
+                            //     }
+                            // };
 
-                            cache.info.updates = None;
-                            let _ = task.await;
-                            let mut root = DataUsageEntry::default();
-                            if let Some(r) = cache.root() {
-                                root = cache.flatten(&r);
-                                if let Some(r) = &root.replication_stats {
-                                    if r.empty() {
-                                        root.replication_stats = None;
-                                    }
-                                }
-                            }
-                            let _ = buckets_results_tx_clone
-                                .send(DataUsageEntryInfo {
-                                    name: cache.info.name.clone(),
-                                    parent: DATA_USAGE_ROOT.to_string(),
-                                    entry: root,
-                                })
-                                .await;
-                            let _ = cache.save(&cache_name.to_string_lossy()).await;
+                            // cache.info.updates = None;
+                            // let _ = task.await;
+                            // let mut root = DataUsageEntry::default();
+                            // if let Some(r) = cache.root() {
+                            //     root = cache.flatten(&r);
+                            //     if let Some(r) = &root.replication_stats {
+                            //         if r.empty() {
+                            //             root.replication_stats = None;
+                            //         }
+                            //     }
+                            // }
+                            // let _ = buckets_results_tx_clone
+                            //     .send(DataUsageEntryInfo {
+                            //         name: cache.info.name.clone(),
+                            //         parent: DATA_USAGE_ROOT.to_string(),
+                            //         entry: root,
+                            //     })
+                            //     .await;
+                            // let _ = cache.save(&cache_name.to_string_lossy()).await;
                         }
                     }
                     info!("continue scanner");
@@ -3731,7 +3733,7 @@ impl SetDisks {
         Ok(())
     }
 
-    async fn delete_prefix(&self, bucket: &str, prefix: &str) -> disk::error::Result<()> {
+    async fn delete_prefix(&self, bucket: &str, prefix: &str) -> rustfs_disk_core::error::Result<()> {
         let disks = self.get_disks_internal().await;
         let write_quorum = disks.len() / 2 + 1;
 
@@ -4152,7 +4154,7 @@ impl StorageAPI for SetDisks {
     async fn local_storage_info(&self) -> rustfs_madmin::StorageInfo {
         let disks = self.get_disks_internal().await;
 
-        let mut local_disks: Vec<Option<Arc<disk::Disk>>> = Vec::new();
+        let mut local_disks: Vec<Option<DiskStore>> = Vec::new();
         let mut local_endpoints = Vec::new();
 
         for (i, ep) in self.set_endpoints.iter().enumerate() {
@@ -5733,7 +5735,7 @@ fn is_object_dang_ling(
     meta_arr: &[FileInfo],
     errs: &[Option<DiskError>],
     data_errs_by_part: &HashMap<usize, Vec<usize>>,
-) -> disk::error::Result<FileInfo> {
+) -> rustfs_disk_core::error::Result<FileInfo> {
     let mut valid_meta = FileInfo::default();
     let (not_found_meta_errs, non_actionable_meta_errs) = dang_ling_meta_errs_count(errs);
 
@@ -5859,7 +5861,7 @@ async fn disks_with_all_parts(
     bucket: &str,
     object: &str,
     scan_mode: HealScanMode,
-) -> disk::error::Result<(Vec<Option<DiskStore>>, HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>)> {
+) -> rustfs_disk_core::error::Result<(Vec<Option<DiskStore>>, HashMap<usize, Vec<usize>>, HashMap<usize, Vec<usize>>)> {
     let mut available_disks = vec![None; online_disks.len()];
     let mut data_errs_by_disk: HashMap<usize, Vec<usize>> = HashMap::new();
     for i in 0..online_disks.len() {
@@ -6200,10 +6202,11 @@ fn get_complete_multipart_md5(parts: &[CompletePart]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::disk::CHECK_PART_UNKNOWN;
-    use crate::disk::CHECK_PART_VOLUME_NOT_FOUND;
-    use crate::disk::error::DiskError;
     use crate::store_api::CompletePart;
+    use rustfs_disk_core::CHECK_PART_SUCCESS;
+    use rustfs_disk_core::CHECK_PART_UNKNOWN;
+    use rustfs_disk_core::CHECK_PART_VOLUME_NOT_FOUND;
+    use rustfs_disk_core::error::DiskError;
     use rustfs_filemeta::ErasureInfo;
     use std::collections::HashMap;
     use time::OffsetDateTime;

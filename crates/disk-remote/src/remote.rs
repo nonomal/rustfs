@@ -21,9 +21,9 @@ use rustfs_protos::{
     node_service_time_out_client,
     proto_gen::node_service::{
         CheckPartsRequest, DeletePathsRequest, DeleteRequest, DeleteVersionRequest, DeleteVersionsRequest, DeleteVolumeRequest,
-        DiskInfoRequest, ListDirRequest, ListVolumesRequest, MakeVolumeRequest, MakeVolumesRequest, NsScannerRequest,
-        ReadAllRequest, ReadMultipleRequest, ReadVersionRequest, ReadXlRequest, RenameDataRequest, RenameFileRequest,
-        StatVolumeRequest, UpdateMetadataRequest, VerifyFileRequest, WriteAllRequest, WriteMetadataRequest,
+        DiskInfoRequest, ListDirRequest, ListVolumesRequest, MakeVolumeRequest, MakeVolumesRequest, ReadAllRequest,
+        ReadMultipleRequest, ReadVersionRequest, ReadXlRequest, RenameDataRequest, RenameFileRequest, StatVolumeRequest,
+        UpdateMetadataRequest, VerifyFileRequest, WriteAllRequest, WriteMetadataRequest,
     },
 };
 
@@ -36,14 +36,11 @@ use rustfs_endpoints::Endpoint;
 use rustfs_filemeta::{FileInfo, FileInfoVersions, RawFileInfo};
 use rustfs_protos::proto_gen::node_service::RenamePartRequest;
 use rustfs_rio::{HttpReader, HttpWriter};
-use tokio::{
-    io::AsyncWrite,
-    sync::mpsc::{self, Sender},
-};
-use tokio_stream::{StreamExt, wrappers::ReceiverStream};
 use tonic::Request;
 use tracing::info;
 use uuid::Uuid;
+
+use crate::http_auth::build_auth_headers;
 
 #[derive(Debug)]
 pub struct RemoteDisk {
@@ -570,7 +567,7 @@ impl DiskAPI for RemoteDisk {
     }
 
     #[tracing::instrument(skip(self, wr))]
-    async fn walk_dir<W: AsyncWrite + Unpin + Send>(&self, opts: WalkDirOptions, wr: &mut W) -> Result<()> {
+    async fn walk_dir(&self, opts: WalkDirOptions, wr: &mut FileWriter) -> Result<()> {
         info!("walk_dir {}", self.endpoint.to_string());
 
         let url = format!(
@@ -940,10 +937,10 @@ impl DiskAPI for RemoteDisk {
     //     }
     // }
 
-    // #[tracing::instrument(skip(self))]
-    // async fn healing(&self) -> Option<HealingTracker> {
-    //     None
-    // }
+    #[tracing::instrument(skip(self))]
+    async fn healing(&self) -> Option<Bytes> {
+        None
+    }
 }
 
 #[cfg(test)]

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use super::{metadata_sys::get_bucket_metadata_sys, versioning::VersioningApi};
-use crate::disk::RUSTFS_META_BUCKET;
 use crate::error::Result;
+use rustfs_disk_core::RUSTFS_META_BUCKET;
 use s3s::dto::VersioningConfiguration;
 use tracing::warn;
 

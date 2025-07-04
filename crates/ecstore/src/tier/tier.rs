@@ -46,10 +46,10 @@ use crate::tier::{
 use crate::{
     StorageAPI,
     config::com::{CONFIG_PREFIX, read_config},
-    disk::RUSTFS_META_BUCKET,
     store::ECStore,
     store_api::{ObjectOptions, PutObjReader},
 };
+use rustfs_disk_core::RUSTFS_META_BUCKET;
 use rustfs_rio::HashReader;
 use rustfs_utils::path::{SLASH_SEPARATOR, path_join};
 use s3s::S3ErrorCode;

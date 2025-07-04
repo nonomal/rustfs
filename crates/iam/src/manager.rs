@@ -22,7 +22,6 @@ use crate::{
         UpdateServiceAccountOpts,
     },
 };
-use rustfs_ecstore::global::get_global_action_cred;
 use rustfs_madmin::{AccountStatus, AddOrUpdateUserReq, GroupDesc};
 use rustfs_policy::{
     arn::ARN,
@@ -32,6 +31,7 @@ use rustfs_policy::{
         EMBEDDED_POLICY_TYPE, INHERITED_POLICY_TYPE, Policy, PolicyDoc, default::DEFAULT_POLICIES, iam_policy_claim_name_sa,
     },
 };
+use rustfs_store_globals::get_global_action_cred;
 use rustfs_utils::crypto::base64_encode;
 use rustfs_utils::path::path_join_buf;
 use serde::{Deserialize, Serialize};

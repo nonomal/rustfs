@@ -14,10 +14,10 @@
 
 use super::BitrotReader;
 use super::Erasure;
-use crate::disk::error::Error;
-use crate::disk::error_reduce::reduce_errs;
 use futures::future::join_all;
 use pin_project_lite::pin_project;
+use rustfs_disk_core::error::Error;
+use rustfs_disk_core::error_reduce::reduce_errs;
 use std::io;
 use std::io::ErrorKind;
 use tokio::io::AsyncRead;

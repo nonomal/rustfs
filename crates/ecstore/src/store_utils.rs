@@ -13,8 +13,8 @@
 // limitations under the License.
 
 use crate::config::storageclass::STANDARD;
-use crate::disk::RUSTFS_META_BUCKET;
 use regex::Regex;
+use rustfs_disk_core::RUSTFS_META_BUCKET;
 use rustfs_filemeta::headers::AMZ_OBJECT_TAGGING;
 use rustfs_filemeta::headers::AMZ_STORAGE_CLASS;
 use std::collections::HashMap;

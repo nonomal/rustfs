@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::HashMap;
+
 use crate::error::Error;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -25,6 +27,7 @@ pub const BUCKET_META_PREFIX: &str = "buckets";
 pub const FORMAT_CONFIG_FILE: &str = "format.json";
 pub const STORAGE_FORMAT_FILE: &str = "xl.meta";
 pub const STORAGE_FORMAT_FILE_BACKUP: &str = "xl.meta.bkp";
+pub const HEALING_TRACKER_FILENAME: &str = ".healing.bin";
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CheckPartsResp {
@@ -74,6 +77,36 @@ pub struct DiskInfo {
     pub id: String,
     pub rotational: bool,
     pub error: String,
+    pub metrics: DiskMetrics,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DiskMetrics {
+    pub last_minute: HashMap<String, TimedAction>,
+    pub api_calls: HashMap<String, u64>,
+    pub total_waiting: u32,
+    pub total_errors_availability: u64,
+    pub total_errors_timeout: u64,
+    pub total_writes: u64,
+    pub total_deletes: u64,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TimedAction {
+    #[serde(rename = "count")]
+    pub count: u64,
+    #[serde(rename = "acc_time_ns")]
+    pub acc_time: u64,
+    #[serde(rename = "bytes")]
+    pub bytes: u64,
+}
+
+impl TimedAction {
+    pub fn merge(&mut self, other: &TimedAction) {
+        self.count += other.count;
+        self.acc_time += other.acc_time;
+        self.bytes += other.bytes;
+    }
 }
 
 #[derive(Clone, Debug, Default)]

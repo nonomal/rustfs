@@ -15,15 +15,8 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use crate::disk::error_reduce::count_errs;
 use crate::error::{Error, Result};
 use crate::{
-    disk::{
-        DiskAPI, DiskInfo, DiskOption, DiskStore,
-        error::DiskError,
-        format::{DistributionAlgoVersion, FormatV3},
-        new_disk,
-    },
     error::StorageError,
     global::GLOBAL_LOCAL_DISK_SET_DRIVES,
     heal::heal_commands::{
@@ -40,10 +33,17 @@ use crate::{
 use futures::future::join_all;
 use http::HeaderMap;
 use rustfs_common::globals::GLOBAL_Local_Node_Name;
+use rustfs_disk_core::error_reduce::count_errs;
+use rustfs_disk_core::{
+    DiskAPI, DiskInfo, DiskOption,
+    error::DiskError,
+    format::{DistributionAlgoVersion, FormatV3},
+};
 use rustfs_endpoints::{Endpoints, PoolEndpoints, is_dist_erasure};
 use rustfs_filemeta::FileInfo;
 use rustfs_lock::{LockApi, namespace_lock::NsLockMap, new_lock_api};
 use rustfs_madmin::heal_commands::{HealDriveInfo, HealResultItem};
+use rustfs_store_disk::disk::{DiskStore, new_disk};
 use rustfs_utils::{crc_hash, path::path_join_buf, sip_hash};
 use tokio::sync::RwLock;
 use uuid::Uuid;

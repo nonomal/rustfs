@@ -23,7 +23,7 @@ mod chunk_stream;
 pub mod cmd;
 pub mod compress;
 pub mod config;
-pub mod disk;
+// pub mod disk;
 // pub mod disks_layout;
 // pub mod endpoints;
 pub mod erasure_coding;

@@ -74,3 +74,6 @@ pub mod sys;
 
 #[cfg(feature = "notify")]
 pub use notify::*;
+
+#[cfg(feature = "s3s")]
+pub mod s3s;

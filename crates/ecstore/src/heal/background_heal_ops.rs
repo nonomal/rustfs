@@ -31,14 +31,12 @@ use super::{
     heal_commands::HealOpts,
     heal_ops::{HealSequence, new_bg_heal_sequence},
 };
-use crate::error::{Error, Result};
 use crate::global::GLOBAL_MRFState;
 use crate::heal::error::ERR_RETRY_HEALING;
 use crate::heal::heal_commands::{HEAL_ITEM_BUCKET, HealScanMode};
 use crate::heal::heal_ops::{BG_HEALING_UUID, HealSource};
 use crate::{
     config::RUSTFS_CONFIG_PREFIX,
-    disk::{BUCKET_META_PREFIX, DiskAPI, DiskInfoOptions, RUSTFS_META_BUCKET, error::DiskError},
     global::{GLOBAL_BackgroundHealRoutine, GLOBAL_BackgroundHealState, GLOBAL_LOCAL_DISK_MAP},
     heal::{
         data_usage::{DATA_USAGE_CACHE_NAME, DATA_USAGE_ROOT},
@@ -50,6 +48,11 @@ use crate::{
     store::get_disk_via_endpoint,
     store_api::{BucketInfo, BucketOptions, StorageAPI},
 };
+use crate::{
+    error::{Error, Result},
+    heal::heal_commands::HealingTracker,
+};
+use rustfs_disk_core::{BUCKET_META_PREFIX, DiskAPI, DiskError, DiskInfoOptions, RUSTFS_META_BUCKET};
 use rustfs_endpoints::Endpoint;
 
 pub static DEFAULT_MONITOR_NEW_DISK_INTERVAL: Duration = Duration::from_secs(10);
@@ -94,6 +97,7 @@ pub async fn get_local_disks_to_heal() -> Vec<Endpoint> {
             }
             let h = disk.healing().await;
             if let Some(h) = h {
+                let h = HealingTracker::unmarshal_msg(h.as_ref()).unwrap_or_default();
                 if !h.finished {
                     info!("get_local_disks_to_heal, disk healing not finished");
                     disks_to_heal.push(disk.endpoint());

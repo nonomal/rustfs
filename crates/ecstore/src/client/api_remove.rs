@@ -34,10 +34,8 @@ use crate::client::{
     api_error_response::{ErrorResponse, http_resp_to_error_response, to_error_response},
     transition_api::{ReaderImpl, RequestMetadata, TransitionClient},
 };
-use crate::{
-    disk::DiskAPI,
-    store_api::{GetObjectReader, ObjectInfo, StorageAPI},
-};
+use crate::store_api::{GetObjectReader, ObjectInfo, StorageAPI};
+use rustfs_disk_core::DiskAPI;
 use rustfs_utils::hash::EMPTY_STRING_SHA256_HASH;
 
 pub struct RemoveBucketOptions {

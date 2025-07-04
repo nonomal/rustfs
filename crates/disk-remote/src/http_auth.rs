@@ -19,7 +19,7 @@ use http::HeaderMap;
 use http::HeaderValue;
 use http::Method;
 use http::Uri;
-use rustfs_store_core::globals::get_global_action_cred;
+use rustfs_store_globals::get_global_action_cred;
 use sha2::Sha256;
 use time::OffsetDateTime;
 use tracing::error;
@@ -66,6 +66,7 @@ pub fn build_auth_headers(url: &str, method: &Method, headers: &mut HeaderMap) {
     headers.insert(TIMESTAMP_HEADER, HeaderValue::from_str(&timestamp.to_string()).unwrap());
 }
 
+#[allow(dead_code)]
 /// Verify the request signature for RPC requests
 pub fn verify_rpc_signature(url: &str, method: &Method, headers: &HeaderMap) -> std::io::Result<()> {
     let secret = get_shared_secret();

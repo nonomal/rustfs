@@ -31,6 +31,5 @@ rustfs-disk-core.workspace = true
 rustfs-endpoints.workspace = true
 rustfs-rio.workspace = true
 rustfs-filemeta.workspace = true
-rustfs-store-core.workspace = true
-
+rustfs-store-globals.workspace = true
 

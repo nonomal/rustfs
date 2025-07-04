@@ -26,12 +26,12 @@ use rustfs_ecstore::{
         RUSTFS_CONFIG_PREFIX,
         com::{delete_config, read_config, read_config_with_metadata, save_config},
     },
-    global::get_global_action_cred,
     store::ECStore,
     store_api::{ObjectInfo, ObjectOptions},
     store_list_objects::{ObjectInfoOrErr, WalkOptions},
 };
 use rustfs_policy::{auth::UserIdentity, policy::PolicyDoc};
+use rustfs_store_globals::get_global_action_cred;
 use rustfs_utils::path::{SLASH_SEPARATOR, path_join_buf};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{collections::HashMap, sync::Arc};

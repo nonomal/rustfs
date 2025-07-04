@@ -39,7 +39,10 @@ use crate::bucket::{
     utils::is_meta_bucketname,
 };
 use crate::cmd::bucket_replication::queue_replication_heal;
+use crate::error::{Error, Result};
 use crate::event::name::EventName;
+use crate::heal::data_scanner_metric::current_path_updater;
+use crate::store_api::ObjectInfo;
 use crate::{
     bucket::{
         lifecycle::{
@@ -56,7 +59,6 @@ use crate::{
 use crate::{
     bucket::{versioning::VersioningApi, versioning_sys::BucketVersioningSys},
     cmd::bucket_replication::ReplicationStatusType,
-    disk,
     heal::data_usage::DATA_USAGE_ROOT,
 };
 use crate::{
@@ -65,7 +67,6 @@ use crate::{
         com::{read_config, save_config},
         heal::Config,
     },
-    disk::{DiskInfoOptions, DiskStore},
     global::GLOBAL_BackgroundHealState,
     heal::{
         data_usage::BACKGROUND_HEAL_INFO_PATH,
@@ -78,18 +79,15 @@ use crate::{
     store::ECStore,
     store_utils::is_reserved_or_invalid_bucket,
 };
-use crate::{disk::DiskAPI, store_api::ObjectInfo};
-use crate::{
-    disk::error::DiskError,
-    error::{Error, Result},
-};
-use crate::{disk::local::LocalDisk, heal::data_scanner_metric::current_path_updater};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
 use rand::Rng;
 use rmp_serde::{Deserializer, Serializer};
+use rustfs_disk_core::{DiskAPI, DiskError, DiskInfoOptions};
+use rustfs_disk_local::local::LocalDisk;
 use rustfs_endpoints::{is_erasure, is_erasure_sd};
 use rustfs_filemeta::{FileInfo, MetaCacheEntries, MetaCacheEntry, MetadataResolutionParams};
+use rustfs_store_disk::disk::DiskStore;
 use rustfs_utils::path::encode_dir_object;
 use rustfs_utils::path::{SLASH_SEPARATOR, path_join, path_to_bucket_object, path_to_bucket_object_with_base_path};
 use s3s::dto::{
@@ -1520,7 +1518,7 @@ pub async fn scan_data_folder(
     get_size_fn: GetSizeFn,
     heal_scan_mode: HealScanMode,
     should_sleep: ShouldSleepFn,
-) -> disk::error::Result<DataUsageCache> {
+) -> rustfs_disk_core::error::Result<DataUsageCache> {
     if cache.info.name.is_empty() || cache.info.name == DATA_USAGE_ROOT {
         return Err(DiskError::other("internal error: root scan attempted"));
     }

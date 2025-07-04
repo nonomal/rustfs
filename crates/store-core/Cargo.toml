@@ -32,19 +32,21 @@ rmp-serde.workspace = true
 rmp.workspace = true
 tonic.workspace = true
 http.workspace = true
+bytes.workspace = true
+byteorder.workspace = true
 rustfs-rio.workspace = true
 rustfs-filemeta.workspace = true
 rustfs-disk-core.workspace = true
+rustfs-store-disk.workspace = true
 futures.workspace = true
 rustfs-madmin.workspace = true
-rustfs-utils = {workspace = true, features=["path"]}
+rustfs-utils = {workspace = true, features=["path","s3s","string"]}
 s3s.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 uuid.workspace = true
 rustfs-endpoints.workspace = true
 lazy_static.workspace = true
-rustfs-ecstore.workspace = true
 async-trait.workspace=true
 rustfs-policy.workspace = true
 

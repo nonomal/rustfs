@@ -14,11 +14,11 @@
 
 use http::HeaderMap;
 use http::Uri;
-use rustfs_ecstore::global::get_global_action_cred;
 use rustfs_iam::error::Error as IamError;
 use rustfs_iam::sys::SESSION_POLICY_NAME;
 use rustfs_policy::auth;
 use rustfs_policy::auth::get_claims_from_token_with_secret;
+use rustfs_store_globals::get_global_action_cred;
 use s3s::S3Error;
 use s3s::S3ErrorCode;
 use s3s::S3Result;

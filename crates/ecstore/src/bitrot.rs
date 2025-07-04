@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::disk::error::DiskError;
-use crate::disk::{self, DiskAPI as _, DiskStore};
 use crate::erasure_coding::{BitrotReader, BitrotWriterWrapper, CustomWriter};
+use rustfs_disk_core::DiskAPI;
+use rustfs_disk_core::error::DiskError;
+use rustfs_store_disk::disk::DiskStore;
 use rustfs_utils::HashAlgorithm;
 use std::io::Cursor;
 use tokio::io::AsyncRead;
@@ -40,7 +41,7 @@ pub async fn create_bitrot_reader(
     length: usize,
     shard_size: usize,
     checksum_algo: HashAlgorithm,
-) -> disk::error::Result<Option<BitrotReader<Box<dyn AsyncRead + Send + Sync + Unpin>>>> {
+) -> rustfs_disk_core::error::Result<Option<BitrotReader<Box<dyn AsyncRead + Send + Sync + Unpin>>>> {
     // Calculate the total length to read, including the checksum overhead
     let length = length.div_ceil(shard_size) * checksum_algo.size() + length;
 
@@ -85,7 +86,7 @@ pub async fn create_bitrot_writer(
     length: i64,
     shard_size: usize,
     checksum_algo: HashAlgorithm,
-) -> disk::error::Result<BitrotWriterWrapper> {
+) -> rustfs_disk_core::error::Result<BitrotWriterWrapper> {
     let writer = if is_inline_buffer {
         CustomWriter::new_inline_buffer()
     } else if let Some(disk) = disk {

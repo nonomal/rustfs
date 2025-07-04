@@ -16,12 +16,12 @@ use crate::error::{Error, Result};
 use crate::{
     bucket::metadata_sys::get_replication_config,
     config::com::{read_config, save_config},
-    disk::{BUCKET_META_PREFIX, RUSTFS_META_BUCKET},
     error::to_object_err,
     new_object_layer_fn,
     store::ECStore,
 };
 use lazy_static::lazy_static;
+use rustfs_disk_core::{BUCKET_META_PREFIX, RUSTFS_META_BUCKET};
 use rustfs_utils::path::SLASH_SEPARATOR;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc, time::SystemTime};

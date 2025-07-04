@@ -14,16 +14,11 @@
 
 use std::{collections::HashMap, io::Cursor, pin::Pin};
 
-// use common::error::Error as EcsError;
 use crate::{
     admin_server_info::get_local_server_property,
     bucket::{metadata::load_bucket_metadata, metadata_sys},
-    disk::{
-        DeleteOptions, DiskAPI, DiskInfoOptions, DiskStore, FileInfoVersions, ReadMultipleReq, ReadOptions, UpdateMetadataOpts,
-        error::DiskError,
-    },
     heal::{
-        data_usage_cache::DataUsageCache,
+        data_usage_cache::{DataUsageCache, DataUsageEntry},
         heal_commands::{HealOpts, get_local_background_heal_status},
     },
     metrics_realtime::{CollectMetricsOpts, MetricType, collect_local_metrics},
@@ -34,7 +29,12 @@ use crate::{
 };
 use futures::{Stream, StreamExt};
 use futures_util::future::join_all;
+use rustfs_disk_core::{
+    DeleteOptions, DiskAPI, DiskError, DiskInfoOptions, FileWriter, ReadMultipleReq, ReadOptions, UpdateMetadataOpts,
+};
+use rustfs_filemeta::FileInfoVersions;
 use rustfs_lock::{GLOBAL_LOCAL_SERVER, Locker, lock_args::LockArgs};
+use rustfs_store_disk::disk::DiskStore;
 
 use rustfs_common::globals::GLOBAL_Local_Node_Name;
 
@@ -784,7 +784,8 @@ impl Node for NodeService {
                 }
             };
             spawn(async {
-                let (rd, mut wr) = tokio::io::duplex(64);
+                let (rd, wr) = tokio::io::duplex(64);
+                let mut wr = Box::new(wr) as FileWriter;
                 let job1 = spawn(async move {
                     if let Err(err) = disk.walk_dir(opts, &mut wr).await {
                         println!("walk_dir err {err:?}");
@@ -1409,8 +1410,8 @@ impl Node for NodeService {
         tokio::spawn(async move {
             match in_stream.next().await {
                 Some(Ok(request)) => {
-                    if let Some(disk) = find_local_disk(&request.disk).await {
-                        let cache = match serde_json::from_str::<DataUsageCache>(&request.cache) {
+                    if let Some(_disk) = find_local_disk(&request.disk).await {
+                        let _cache = match serde_json::from_str::<DataUsageCache>(&request.cache) {
                             Ok(cache) => cache,
                             Err(err) => {
                                 tx.send(Ok(NsScannerResponse {
@@ -1424,9 +1425,9 @@ impl Node for NodeService {
                                 return;
                             }
                         };
-                        let (updates_tx, mut updates_rx) = mpsc::channel(100);
+                        let (_updates_tx, mut updates_rx) = mpsc::channel::<DataUsageEntry>(100);
                         let tx_clone = tx.clone();
-                        let task = tokio::spawn(async move {
+                        let _task = tokio::spawn(async move {
                             loop {
                                 match updates_rx.recv().await {
                                     Some(update) => {
@@ -1445,31 +1446,33 @@ impl Node for NodeService {
                                 }
                             }
                         });
-                        let data_usage_cache = disk.ns_scanner(&cache, updates_tx, request.scan_mode as usize, None).await;
-                        let _ = task.await;
-                        match data_usage_cache {
-                            Ok(data_usage_cache) => {
-                                let data_usage_cache = serde_json::to_string(&data_usage_cache).expect("encode failed");
-                                tx.send(Ok(NsScannerResponse {
-                                    success: true,
-                                    update: "".to_string(),
-                                    data_usage_cache,
-                                    error: None,
-                                }))
-                                .await
-                                .expect("working rx");
-                            }
-                            Err(err) => {
-                                tx.send(Ok(NsScannerResponse {
-                                    success: false,
-                                    update: "".to_string(),
-                                    data_usage_cache: "".to_string(),
-                                    error: Some(err.into()),
-                                }))
-                                .await
-                                .expect("working rx");
-                            }
-                        }
+
+                        // FIXME: TODO:
+                        // let data_usage_cache = disk.ns_scanner(&cache, updates_tx, request.scan_mode as usize, None).await;
+                        // let _ = task.await;
+                        // match data_usage_cache {
+                        //     Ok(data_usage_cache) => {
+                        //         let data_usage_cache = serde_json::to_string(&data_usage_cache).expect("encode failed");
+                        //         tx.send(Ok(NsScannerResponse {
+                        //             success: true,
+                        //             update: "".to_string(),
+                        //             data_usage_cache,
+                        //             error: None,
+                        //         }))
+                        //         .await
+                        //         .expect("working rx");
+                        //     }
+                        //     Err(err) => {
+                        //         tx.send(Ok(NsScannerResponse {
+                        //             success: false,
+                        //             update: "".to_string(),
+                        //             data_usage_cache: "".to_string(),
+                        //             error: Some(err.into()),
+                        //         }))
+                        //         .await
+                        //         .expect("working rx");
+                        //     }
+                        // }
                     } else {
                         tx.send(Ok(NsScannerResponse {
                             success: false,

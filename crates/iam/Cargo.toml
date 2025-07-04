@@ -42,5 +42,6 @@ tracing.workspace = true
 rustfs-madmin.workspace = true
 lazy_static.workspace = true
 rustfs-utils = { workspace = true, features = ["path"] }
+rustfs-store-globals.workspace = true
 
 [dev-dependencies]

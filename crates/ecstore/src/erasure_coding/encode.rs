@@ -14,12 +14,12 @@
 
 use super::BitrotWriterWrapper;
 use super::Erasure;
-use crate::disk::error::Error;
-use crate::disk::error_reduce::count_errs;
-use crate::disk::error_reduce::{OBJECT_OP_IGNORED_ERRS, reduce_write_quorum_errs};
 use bytes::Bytes;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
+use rustfs_disk_core::error::Error;
+use rustfs_disk_core::error_reduce::count_errs;
+use rustfs_disk_core::error_reduce::{OBJECT_OP_IGNORED_ERRS, reduce_write_quorum_errs};
 use std::sync::Arc;
 use std::vec;
 use tokio::io::AsyncRead;

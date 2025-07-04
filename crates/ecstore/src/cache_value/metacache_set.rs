@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::disk::error::DiskError;
-use crate::disk::{self, DiskAPI, DiskStore, WalkDirOptions};
 use futures::future::join_all;
+use rustfs_disk_core::error::DiskError;
+use rustfs_disk_core::{DiskAPI, FileWriter, WalkDirOptions};
 use rustfs_filemeta::{MetaCacheEntries, MetaCacheEntry, MetacacheReader, is_io_eof};
+use rustfs_store_disk::disk::DiskStore;
 use std::{future::Future, pin::Pin, sync::Arc};
 use tokio::{spawn, sync::broadcast::Receiver as B_Receiver};
 use tracing::error;
@@ -63,7 +64,7 @@ impl Clone for ListPathRawOptions {
     }
 }
 
-pub async fn list_path_raw(mut rx: B_Receiver<bool>, opts: ListPathRawOptions) -> disk::error::Result<()> {
+pub async fn list_path_raw(mut rx: B_Receiver<bool>, opts: ListPathRawOptions) -> rustfs_disk_core::error::Result<()> {
     if opts.disks.is_empty() {
         return Err(DiskError::other("list_path_raw: 0 drives provided"));
     }
@@ -79,7 +80,9 @@ pub async fn list_path_raw(mut rx: B_Receiver<bool>, opts: ListPathRawOptions) -
         let opts_clone = opts.clone();
         let fds_clone = fds.clone();
         let mut cancel_rx_clone = cancel_rx.resubscribe();
-        let (rd, mut wr) = tokio::io::duplex(64);
+        let (rd, wr) = tokio::io::duplex(64);
+        let mut wr = Box::new(wr) as FileWriter;
+
         readers.push(MetacacheReader::new(rd));
         jobs.push(spawn(async move {
             let wakl_opts = WalkDirOptions {

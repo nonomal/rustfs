@@ -23,7 +23,6 @@ use crate::heal::heal_commands::{HEAL_ITEM_BUCKET, HEAL_ITEM_OBJECT};
 use crate::store_api::StorageAPI;
 use crate::{
     config::com::CONFIG_PREFIX,
-    disk::RUSTFS_META_BUCKET,
     global::GLOBAL_BackgroundHealRoutine,
     heal::{error::ERR_HEAL_STOP_SIGNALLED, heal_commands::DRIVE_STATE_OK},
 };
@@ -34,6 +33,7 @@ use crate::{
 use chrono::Utc;
 use futures::join;
 use lazy_static::lazy_static;
+use rustfs_disk_core::RUSTFS_META_BUCKET;
 use rustfs_endpoints::{Endpoint, Endpoints, is_dist_erasure};
 use rustfs_filemeta::MetaCacheEntry;
 use rustfs_madmin::heal_commands::{HealDriveInfo, HealItemType, HealResultItem};
@@ -66,7 +66,7 @@ pub type HealEntryFn =
     Arc<dyn Fn(String, MetaCacheEntry, HealScanMode) -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync + 'static>;
 
 pub const BG_HEALING_UUID: &str = "0000-0000-0000-0000";
-pub const HEALING_TRACKER_FILENAME: &str = ".healing.bin";
+// pub const HEALING_TRACKER_FILENAME: &str = ".healing.bin";
 const KEEP_HEAL_SEQ_STATE_DURATION: Duration = Duration::from_secs(10 * 60);
 const HEAL_NOT_STARTED_STATUS: &str = "not started";
 const HEAL_RUNNING_STATUS: &str = "running";

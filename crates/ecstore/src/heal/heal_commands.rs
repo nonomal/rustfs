@@ -18,17 +18,19 @@ use std::{
     time::SystemTime,
 };
 
+use crate::error::Result;
 use crate::{
     config::storageclass::{RRS, STANDARD},
-    disk::{BUCKET_META_PREFIX, DeleteOptions, DiskAPI, DiskStore, RUSTFS_META_BUCKET, error::DiskError, fs::read_file},
     global::GLOBAL_BackgroundHealState,
-    heal::heal_ops::HEALING_TRACKER_FILENAME,
     new_object_layer_fn,
     store_api::{BucketInfo, StorageAPI},
 };
-use crate::{disk, error::Result};
 use chrono::{DateTime, Utc};
 use lazy_static::lazy_static;
+use rustfs_disk_core::{
+    BUCKET_META_PREFIX, DeleteOptions, DiskAPI, HEALING_TRACKER_FILENAME, RUSTFS_META_BUCKET, error::DiskError,
+};
+use rustfs_store_disk::disk::DiskStore;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use tokio::sync::RwLock;
@@ -137,11 +139,11 @@ pub struct HealingTracker {
 }
 
 impl HealingTracker {
-    pub fn marshal_msg(&self) -> disk::error::Result<Vec<u8>> {
+    pub fn marshal_msg(&self) -> rustfs_disk_core::error::Result<Vec<u8>> {
         Ok(serde_json::to_vec(self)?)
     }
 
-    pub fn unmarshal_msg(data: &[u8]) -> disk::error::Result<Self> {
+    pub fn unmarshal_msg(data: &[u8]) -> rustfs_disk_core::error::Result<Self> {
         Ok(serde_json::from_slice::<HealingTracker>(data)?)
     }
 
@@ -208,7 +210,7 @@ impl HealingTracker {
         }
     }
 
-    pub async fn update(&mut self) -> disk::error::Result<()> {
+    pub async fn update(&mut self) -> rustfs_disk_core::error::Result<()> {
         if let Some(disk) = &self.disk {
             if healing(disk.path().to_string_lossy().as_ref()).await?.is_none() {
                 return Err(DiskError::other(format!("healingTracker: drive {} is not marked as healing", self.id)));
@@ -226,7 +228,7 @@ impl HealingTracker {
         self.save().await
     }
 
-    pub async fn save(&mut self) -> disk::error::Result<()> {
+    pub async fn save(&mut self) -> rustfs_disk_core::error::Result<()> {
         let _ = self.mu.write().await;
         if self.pool_index.is_none() || self.set_index.is_none() || self.disk_index.is_none() {
             let Some(store) = new_object_layer_fn() else {
@@ -387,7 +389,7 @@ impl Clone for HealingTracker {
     }
 }
 
-pub async fn load_healing_tracker(disk: &Option<DiskStore>) -> disk::error::Result<HealingTracker> {
+pub async fn load_healing_tracker(disk: &Option<DiskStore>) -> rustfs_disk_core::error::Result<HealingTracker> {
     if let Some(disk) = disk {
         let disk_id = disk.get_disk_id().await?;
         if let Some(disk_id) = disk_id {
@@ -412,7 +414,7 @@ pub async fn load_healing_tracker(disk: &Option<DiskStore>) -> disk::error::Resu
     }
 }
 
-pub async fn init_healing_tracker(disk: DiskStore, heal_id: &str) -> disk::error::Result<HealingTracker> {
+pub async fn init_healing_tracker(disk: DiskStore, heal_id: &str) -> rustfs_disk_core::error::Result<HealingTracker> {
     let disk_location = disk.get_disk_location();
     Ok(HealingTracker {
         id: disk
@@ -431,13 +433,13 @@ pub async fn init_healing_tracker(disk: DiskStore, heal_id: &str) -> disk::error
     })
 }
 
-pub async fn healing(derive_path: &str) -> disk::error::Result<Option<HealingTracker>> {
+pub async fn healing(derive_path: &str) -> rustfs_disk_core::error::Result<Option<HealingTracker>> {
     let healing_file = Path::new(derive_path)
         .join(RUSTFS_META_BUCKET)
         .join(BUCKET_META_PREFIX)
         .join(HEALING_TRACKER_FILENAME);
 
-    let b = read_file(healing_file).await?;
+    let b = tokio::fs::read(healing_file).await?;
     if b.is_empty() {
         return Ok(None);
     }

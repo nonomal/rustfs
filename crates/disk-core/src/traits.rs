@@ -40,10 +40,6 @@ pub trait DiskAPI: Debug + Send + Sync + 'static {
     fn path(&self) -> PathBuf;
     fn get_disk_location(&self) -> DiskLocation;
 
-    // Healing
-    // DiskInfo
-    // NSScanner
-
     // Volume operations.
     async fn make_volume(&self, volume: &str) -> Result<()>;
     async fn make_volumes(&self, volume: Vec<&str>) -> Result<()>;
@@ -51,8 +47,7 @@ pub trait DiskAPI: Debug + Send + Sync + 'static {
     async fn stat_volume(&self, volume: &str) -> Result<VolumeInfo>;
     async fn delete_volume(&self, volume: &str) -> Result<()>;
 
-    // 并发边读边写 w <- MetaCacheEntry
-    async fn walk_dir<W: AsyncWrite + Unpin + Send>(&self, opts: WalkDirOptions, wr: &mut W) -> Result<()>;
+    async fn walk_dir(&self, opts: WalkDirOptions, wr: &mut FileWriter) -> Result<()>;
 
     // Metadata operations
     async fn delete_version(
@@ -101,9 +96,7 @@ pub trait DiskAPI: Debug + Send + Sync + 'static {
     async fn rename_file(&self, src_volume: &str, src_path: &str, dst_volume: &str, dst_path: &str) -> Result<()>;
     async fn rename_part(&self, src_volume: &str, src_path: &str, dst_volume: &str, dst_path: &str, meta: Bytes) -> Result<()>;
     async fn delete(&self, volume: &str, path: &str, opt: DeleteOptions) -> Result<()>;
-    // VerifyFile
     async fn verify_file(&self, volume: &str, path: &str, fi: &FileInfo) -> Result<CheckPartsResp>;
-    // CheckParts
     async fn check_parts(&self, volume: &str, path: &str, fi: &FileInfo) -> Result<CheckPartsResp>;
     // StatInfoFile
     // ReadParts
@@ -119,5 +112,5 @@ pub trait DiskAPI: Debug + Send + Sync + 'static {
     //     scan_mode: HealScanMode,
     //     we_sleep: ShouldSleepFn,
     // ) -> Result<DataUsageCache>;
-    // async fn healing(&self) -> Option<HealingTracker>;
+    async fn healing(&self) -> Option<Bytes>;
 }

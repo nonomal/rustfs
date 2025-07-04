@@ -18,7 +18,6 @@ use crate::{admin::router::Operation, auth::check_key_valid};
 use http::HeaderMap;
 use hyper::StatusCode;
 use matchit::Params;
-use rustfs_ecstore::global::get_global_action_cred;
 use rustfs_iam::error::is_err_no_such_service_account;
 use rustfs_iam::sys::{NewServiceAccountOpts, UpdateServiceAccountOpts};
 use rustfs_madmin::{
@@ -27,6 +26,7 @@ use rustfs_madmin::{
 };
 use rustfs_policy::policy::action::{Action, AdminAction};
 use rustfs_policy::policy::{Args, Policy};
+use rustfs_store_globals::get_global_action_cred;
 use s3s::S3ErrorCode::InvalidRequest;
 use s3s::{Body, S3Error, S3ErrorCode, S3Request, S3Response, S3Result, header::CONTENT_TYPE, s3_error};
 use serde::Deserialize;

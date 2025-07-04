@@ -19,7 +19,7 @@ use hyper::Uri;
 use hyper::http::Extensions;
 use matchit::Params;
 use matchit::Router;
-use rustfs_ecstore::rpc::verify_rpc_signature;
+use rustfs_disk_remote::http_auth::verify_rpc_signature;
 use s3s::Body;
 use s3s::S3Request;
 use s3s::S3Response;

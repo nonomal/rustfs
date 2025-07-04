@@ -15,8 +15,6 @@
 use crate::bucket::versioning_sys::BucketVersioningSys;
 use crate::cache_value::metacache_set::{ListPathRawOptions, list_path_raw};
 use crate::config::com::{CONFIG_PREFIX, read_config, save_config};
-use crate::disk::error::DiskError;
-use crate::disk::{BUCKET_META_PREFIX, RUSTFS_META_BUCKET};
 use crate::error::{Error, Result};
 use crate::error::{
     StorageError, is_err_bucket_exists, is_err_bucket_not_found, is_err_data_movement_overwrite, is_err_object_not_found,
@@ -36,6 +34,8 @@ use futures::future::BoxFuture;
 use http::HeaderMap;
 use rmp_serde::{Deserializer, Serializer};
 use rustfs_common::defer;
+use rustfs_disk_core::error::DiskError;
+use rustfs_disk_core::{BUCKET_META_PREFIX, RUSTFS_META_BUCKET};
 use rustfs_filemeta::{MetaCacheEntries, MetaCacheEntry, MetadataResolutionParams};
 use rustfs_rio::{HashReader, WarpReader};
 use rustfs_utils::path::{SLASH_SEPARATOR, encode_dir_object, path_join};

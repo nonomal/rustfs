@@ -16,8 +16,6 @@ use crate::StorageAPI;
 use crate::bucket::metadata_sys::get_versioning_config;
 use crate::bucket::versioning::VersioningApi;
 use crate::cache_value::metacache_set::{ListPathRawOptions, list_path_raw};
-use crate::disk::error::DiskError;
-use crate::disk::{DiskInfo, DiskStore};
 use crate::error::{
     Error, Result, StorageError, is_all_not_found, is_all_volume_not_found, is_err_bucket_not_found, to_object_err,
 };
@@ -28,10 +26,13 @@ use crate::store_utils::is_reserved_or_invalid_bucket;
 use crate::{store::ECStore, store_api::ListObjectsV2Info};
 use futures::future::join_all;
 use rand::seq::SliceRandom;
+use rustfs_disk_core::DiskInfo;
+use rustfs_disk_core::error::DiskError;
 use rustfs_filemeta::{
     FileInfo, MetaCacheEntries, MetaCacheEntriesSorted, MetaCacheEntriesSortedResult, MetaCacheEntry, MetadataResolutionParams,
     merge_file_meta_versions,
 };
+use rustfs_store_disk::disk::DiskStore;
 use rustfs_utils::path::{self, SLASH_SEPARATOR, base_dir_from_prefix};
 use std::collections::HashMap;
 use std::sync::Arc;

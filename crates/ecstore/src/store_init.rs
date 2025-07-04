@@ -13,20 +13,16 @@
 // limitations under the License.
 
 use crate::config::{KVS, storageclass};
-use crate::disk::error_reduce::{count_errs, reduce_write_quorum_errs};
-use crate::disk::{self, DiskAPI};
 use crate::error::{Error, Result};
-use crate::{
-    disk::{
-        DiskInfoOptions, DiskOption, DiskStore, FORMAT_CONFIG_FILE, RUSTFS_META_BUCKET,
-        error::DiskError,
-        format::{FormatErasureVersion, FormatMetaVersion, FormatV3},
-        new_disk,
-    },
-    heal::heal_commands::init_healing_tracker,
-};
+use crate::heal::heal_commands::init_healing_tracker;
 use futures::future::join_all;
+use rustfs_disk_core::error_reduce::{count_errs, reduce_write_quorum_errs};
+use rustfs_disk_core::{
+    DiskAPI, DiskError, DiskInfoOptions, DiskOption, FORMAT_CONFIG_FILE, FormatErasureVersion, FormatMetaVersion, FormatV3,
+    RUSTFS_META_BUCKET,
+};
 use rustfs_endpoints::Endpoints;
+use rustfs_store_disk::disk::{DiskStore, new_disk};
 use std::collections::{HashMap, hash_map::Entry};
 use tracing::{info, warn};
 use uuid::Uuid;
@@ -110,7 +106,7 @@ pub fn should_init_erasure_disks(errs: &[Option<DiskError>]) -> bool {
     count_errs(errs, &DiskError::UnformattedDisk) == errs.len()
 }
 
-pub fn check_disk_fatal_errs(errs: &[Option<DiskError>]) -> disk::error::Result<()> {
+pub fn check_disk_fatal_errs(errs: &[Option<DiskError>]) -> rustfs_disk_core::error::Result<()> {
     if count_errs(errs, &DiskError::UnsupportedDisk) == errs.len() {
         return Err(DiskError::UnsupportedDisk);
     }
@@ -258,7 +254,7 @@ pub async fn load_format_erasure_all(disks: &[Option<DiskStore>], heal: bool) ->
     (datas, errors)
 }
 
-pub async fn load_format_erasure(disk: &DiskStore, heal: bool) -> disk::error::Result<FormatV3> {
+pub async fn load_format_erasure(disk: &DiskStore, heal: bool) -> rustfs_disk_core::error::Result<FormatV3> {
     let data = disk
         .read_all(RUSTFS_META_BUCKET, FORMAT_CONFIG_FILE)
         .await
@@ -283,7 +279,7 @@ pub async fn load_format_erasure(disk: &DiskStore, heal: bool) -> disk::error::R
     Ok(fm)
 }
 
-async fn save_format_file_all(disks: &[Option<DiskStore>], formats: &[Option<FormatV3>]) -> disk::error::Result<()> {
+async fn save_format_file_all(disks: &[Option<DiskStore>], formats: &[Option<FormatV3>]) -> rustfs_disk_core::error::Result<()> {
     let mut futures = Vec::with_capacity(disks.len());
 
     for (i, disk) in disks.iter().enumerate() {
@@ -311,7 +307,11 @@ async fn save_format_file_all(disks: &[Option<DiskStore>], formats: &[Option<For
     Ok(())
 }
 
-pub async fn save_format_file(disk: &Option<DiskStore>, format: &Option<FormatV3>, heal_id: &str) -> disk::error::Result<()> {
+pub async fn save_format_file(
+    disk: &Option<DiskStore>,
+    format: &Option<FormatV3>,
+    heal_id: &str,
+) -> rustfs_disk_core::error::Result<()> {
     if disk.is_none() {
         return Err(DiskError::DiskNotFound);
     }

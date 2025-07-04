@@ -19,8 +19,9 @@ use futures::StreamExt;
 use http::StatusCode;
 use hyper::Method;
 use matchit::Params;
-use rustfs_ecstore::disk::DiskAPI;
-use rustfs_ecstore::disk::WalkDirOptions;
+use rustfs_disk_core::DiskAPI;
+use rustfs_disk_core::FileWriter;
+use rustfs_disk_core::WalkDirOptions;
 use rustfs_ecstore::set_disk::DEFAULT_READ_BUFFER_SIZE;
 use rustfs_ecstore::store::find_local_disk;
 use rustfs_utils::net::bytes_stream;
@@ -158,8 +159,8 @@ impl Operation for WalkDir {
             return Err(s3_error!(InvalidArgument, "disk not found"));
         };
 
-        let (rd, mut wd) = tokio::io::duplex(DEFAULT_READ_BUFFER_SIZE);
-
+        let (rd, wd) = tokio::io::duplex(DEFAULT_READ_BUFFER_SIZE);
+        let mut wd = Box::new(wd) as FileWriter;
         tokio::spawn(async move {
             if let Err(e) = disk.walk_dir(args, &mut wd).await {
                 warn!("walk dir err {}", e);

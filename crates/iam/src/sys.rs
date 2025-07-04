@@ -23,7 +23,6 @@ use crate::store::GroupInfo;
 use crate::store::MappedPolicy;
 use crate::store::Store;
 use crate::store::UserType;
-use rustfs_ecstore::global::get_global_action_cred;
 use rustfs_madmin::AddOrUpdateUserReq;
 use rustfs_madmin::GroupDesc;
 use rustfs_policy::arn::ARN;
@@ -34,6 +33,7 @@ use rustfs_policy::auth::{
 };
 use rustfs_policy::policy::Args;
 use rustfs_policy::policy::{EMBEDDED_POLICY_TYPE, INHERITED_POLICY_TYPE, Policy, PolicyDoc, iam_policy_claim_name_sa};
+use rustfs_store_globals::get_global_action_cred;
 use rustfs_utils::crypto::{base64_decode, base64_encode};
 use serde_json::Value;
 use serde_json::json;

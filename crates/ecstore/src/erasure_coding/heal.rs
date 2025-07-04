@@ -15,9 +15,9 @@
 use super::BitrotReader;
 use super::BitrotWriterWrapper;
 use super::decode::ParallelReader;
-use crate::disk::error::{Error, Result};
 use crate::erasure_coding::encode::MultiWriter;
 use bytes::Bytes;
+use rustfs_disk_core::error::{Error, Result};
 use tokio::io::AsyncRead;
 use tracing::info;
 

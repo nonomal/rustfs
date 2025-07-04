@@ -13,28 +13,26 @@
 // limitations under the License.
 
 use crate::bucket::metadata_sys;
-use crate::disk::error::{Error, Result};
-use crate::disk::error_reduce::{BUCKET_OP_IGNORED_ERRS, is_all_buckets_not_found, reduce_write_quorum_errs};
-use crate::disk::{DiskAPI, DiskStore};
 use crate::global::GLOBAL_LOCAL_DISK_MAP;
 use crate::heal::heal_commands::{
     DRIVE_STATE_CORRUPT, DRIVE_STATE_MISSING, DRIVE_STATE_OFFLINE, DRIVE_STATE_OK, HEAL_ITEM_BUCKET, HealOpts,
 };
 use crate::heal::heal_ops::RUSTFS_RESERVED_BUCKET;
 use crate::store::all_local_disk;
+use crate::store_api::{BucketInfo, BucketOptions, DeleteBucketOptions, MakeBucketOptions};
 use crate::store_utils::is_reserved_or_invalid_bucket;
-use crate::{
-    disk::{self, VolumeInfo},
-    store_api::{BucketInfo, BucketOptions, DeleteBucketOptions, MakeBucketOptions},
-};
 use async_trait::async_trait;
 use futures::future::join_all;
+use rustfs_disk_core::error::{Error, Result};
+use rustfs_disk_core::error_reduce::{BUCKET_OP_IGNORED_ERRS, is_all_buckets_not_found, reduce_write_quorum_errs};
+use rustfs_disk_core::{DiskAPI, RUSTFS_META_BUCKET, VolumeInfo};
 use rustfs_endpoints::{EndpointServerPools, Node};
 use rustfs_madmin::heal_commands::{HealDriveInfo, HealResultItem};
 use rustfs_protos::node_service_time_out_client;
 use rustfs_protos::proto_gen::node_service::{
     DeleteBucketRequest, GetBucketInfoRequest, HealBucketRequest, ListBucketRequest, MakeBucketRequest,
 };
+use rustfs_store_disk::disk::DiskStore;
 use std::{collections::HashMap, fmt::Debug, sync::Arc};
 use tokio::sync::RwLock;
 use tonic::Request;
@@ -706,7 +704,7 @@ pub async fn heal_bucket_local(bucket: &str, opts: &HealOpts) -> Result<HealResu
         });
     }
 
-    if opts.remove && !bucket.starts_with(disk::RUSTFS_META_BUCKET) && !is_all_buckets_not_found(&errs) {
+    if opts.remove && !bucket.starts_with(RUSTFS_META_BUCKET) && !is_all_buckets_not_found(&errs) {
         let mut futures = Vec::new();
         for disk in disks.iter() {
             let disk = disk.clone();

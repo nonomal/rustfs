@@ -13,7 +13,6 @@
 // limitations under the License.
 
 use crate::config::com::save_config;
-use crate::disk::{BUCKET_META_PREFIX, RUSTFS_META_BUCKET};
 use crate::error::{Error, Result};
 use crate::new_object_layer_fn;
 use crate::set_disk::SetDisks;
@@ -23,6 +22,7 @@ use http::HeaderMap;
 use path_clean::PathClean;
 use rand::Rng;
 use rmp_serde::Serializer;
+use rustfs_disk_core::{BUCKET_META_PREFIX, RUSTFS_META_BUCKET};
 use s3s::dto::{BucketLifecycleConfiguration, ReplicationConfiguration};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

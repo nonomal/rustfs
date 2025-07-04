@@ -24,7 +24,8 @@ use rustfs_utils::HashAlgorithm;
 use std::collections::HashMap;
 
 use crate::client::{api_put_object::PutObjectOptions, api_s3_datatypes::ObjectPart};
-use crate::{disk::DiskAPI, store_api::GetObjectReader};
+use crate::store_api::GetObjectReader;
+use rustfs_disk_core::DiskAPI;
 use rustfs_utils::crypto::{base64_decode, base64_encode};
 use s3s::header::{
     X_AMZ_CHECKSUM_ALGORITHM, X_AMZ_CHECKSUM_CRC32, X_AMZ_CHECKSUM_CRC32C, X_AMZ_CHECKSUM_SHA1, X_AMZ_CHECKSUM_SHA256,

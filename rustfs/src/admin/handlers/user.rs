@@ -18,7 +18,6 @@ use crate::{
 };
 use http::{HeaderMap, StatusCode};
 use matchit::Params;
-use rustfs_ecstore::global::get_global_action_cred;
 use rustfs_iam::{
     store::{GroupInfo, MappedPolicy, UserType},
     sys::NewServiceAccountOpts,
@@ -31,6 +30,7 @@ use rustfs_policy::policy::{
     Args,
     action::{Action, AdminAction},
 };
+use rustfs_store_globals::get_global_action_cred;
 
 use rustfs_utils::path::path_join_buf;
 use s3s::{

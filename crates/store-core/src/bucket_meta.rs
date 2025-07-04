@@ -1,43 +1,23 @@
-// Copyright 2024 RustFS Team
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+use std::collections::HashMap;
 
-use super::{quota::BucketQuota, target::BucketTargets};
-
-use super::object_lock::ObjectLockApi;
-use super::versioning::VersioningApi;
-use byteorder::{BigEndian, ByteOrder, LittleEndian};
+use crate::bucket_target::BucketTarget;
+use crate::config::ConfigAPI;
+use crate::error::{Error, Result};
+use crate::object_lock::ObjectLockApi;
+use crate::versioning::VersioningApi;
+use crate::{bucket_quote::BucketQuota, bucket_target::BucketTargets};
+use byteorder::{ByteOrder, LittleEndian};
+use bytes::Bytes;
 use rmp_serde::Serializer as rmpSerializer;
+use rustfs_disk_core::BUCKET_META_PREFIX;
 use rustfs_policy::policy::BucketPolicy;
+use rustfs_utils::s3s::deserialize;
 use s3s::dto::{
     BucketLifecycleConfiguration, NotificationConfiguration, ObjectLockConfiguration, ReplicationConfiguration,
     ServerSideEncryptionConfiguration, Tagging, VersioningConfiguration,
 };
-use serde::Serializer;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
 use time::OffsetDateTime;
-use tracing::error;
-
-use crate::bucket::target::BucketTarget;
-use crate::bucket::utils::deserialize;
-use crate::config::com::{read_config, save_config};
-use crate::error::{Error, Result};
-use crate::new_object_layer_fn;
-
-use crate::store::ECStore;
-use rustfs_disk_core::BUCKET_META_PREFIX;
 
 pub const BUCKET_METADATA_FILE: &str = ".metadata.bin";
 pub const BUCKET_METADATA_FORMAT: u16 = 1;
@@ -293,9 +273,6 @@ impl BucketMetadata {
                 self.replication_config_updated_at = updated;
             }
             BUCKET_TARGETS_FILE => {
-                // let x = data.clone();
-                // let str = std::str::from_utf8(&x).expect("Invalid UTF-8");
-                // println!("update config:{}", str);
                 self.bucket_targets_config_json = data.clone();
                 self.bucket_targets_config_updated_at = updated;
             }
@@ -309,12 +286,8 @@ impl BucketMetadata {
         self.created = created.unwrap_or_else(OffsetDateTime::now_utc)
     }
 
-    pub async fn save(&mut self) -> Result<()> {
-        let Some(store) = new_object_layer_fn() else {
-            return Err(Error::other("errServerNotInitialized"));
-        };
-
-        self.parse_all_configs(store.clone())?;
+    pub async fn save<S: ConfigAPI>(&mut self, store: S) -> Result<()> {
+        self.parse_all_configs()?;
 
         let mut buf: Vec<u8> = vec![0; 4];
 
@@ -326,12 +299,12 @@ impl BucketMetadata {
 
         buf.extend_from_slice(&data);
 
-        save_config(store, self.save_file_path().as_str(), buf).await?;
+        store.save_config(self.save_file_path().as_str(), Bytes::from(buf)).await?;
 
         Ok(())
     }
 
-    fn parse_all_configs(&mut self, _api: Arc<ECStore>) -> Result<()> {
+    fn parse_all_configs(&mut self) -> Result<()> {
         if !self.policy_config_json.is_empty() {
             self.policy_config = Some(serde_json::from_slice(&self.policy_config_json)?);
         }
@@ -369,86 +342,5 @@ impl BucketMetadata {
         }
 
         Ok(())
-    }
-}
-
-pub async fn load_bucket_metadata(api: Arc<ECStore>, bucket: &str) -> Result<BucketMetadata> {
-    load_bucket_metadata_parse(api, bucket, true).await
-}
-
-pub async fn load_bucket_metadata_parse(api: Arc<ECStore>, bucket: &str, parse: bool) -> Result<BucketMetadata> {
-    let mut bm = match read_bucket_metadata(api.clone(), bucket).await {
-        Ok(res) => res,
-        Err(err) => {
-            if err != Error::ConfigNotFound {
-                return Err(err);
-            }
-
-            // info!("bucketmeta {} not found with err {:?}, start to init ", bucket, &err);
-
-            BucketMetadata::new(bucket)
-        }
-    };
-
-    bm.default_timestamps();
-
-    if parse {
-        bm.parse_all_configs(api)?;
-    }
-
-    // TODO: parse_all_configs
-
-    Ok(bm)
-}
-
-async fn read_bucket_metadata(api: Arc<ECStore>, bucket: &str) -> Result<BucketMetadata> {
-    if bucket.is_empty() {
-        error!("bucket name empty");
-        return Err(Error::other("invalid argument"));
-    }
-
-    let bm = BucketMetadata::new(bucket);
-    let file_path = bm.save_file_path();
-
-    let data = read_config(api, &file_path).await?;
-
-    BucketMetadata::check_header(&data)?;
-
-    let bm = BucketMetadata::unmarshal(&data[4..])?;
-
-    Ok(bm)
-}
-
-fn _write_time<S>(t: &OffsetDateTime, s: S) -> std::result::Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    let mut buf = vec![0x0; 15];
-
-    let sec = t.unix_timestamp() - 62135596800;
-    let nsec = t.nanosecond();
-    buf[0] = 0xc7; // mext8
-    buf[1] = 0x0c; // 长度
-    buf[2] = 0x05; // 时间扩展类型
-    BigEndian::write_u64(&mut buf[3..], sec as u64);
-    BigEndian::write_u32(&mut buf[11..], nsec);
-    s.serialize_bytes(&buf)
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[tokio::test]
-    async fn marshal_msg() {
-        // write_time(OffsetDateTime::UNIX_EPOCH).unwrap();
-
-        let bm = BucketMetadata::new("dada");
-
-        let buf = bm.marshal_msg().unwrap();
-
-        let new = BucketMetadata::unmarshal(&buf).unwrap();
-
-        assert_eq!(bm.name, new.name);
     }
 }

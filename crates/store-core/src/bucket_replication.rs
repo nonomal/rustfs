@@ -39,7 +39,7 @@ impl ReplicationStatusType {
             "COMPLETE" => ReplicationStatusType::CompletedLegacy,
             "FAILED" => ReplicationStatusType::Failed,
             "REPLICA" => ReplicationStatusType::Replica,
-            other => ReplicationStatusType::Unknown,
+            _ => ReplicationStatusType::Unknown,
         }
     }
 }

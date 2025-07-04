@@ -37,8 +37,9 @@ use rustfs_disk_core::error_conv::{to_access_error, to_file_error, to_unformatte
 use rustfs_disk_core::format::FormatV3;
 use rustfs_disk_core::{
     BUCKET_META_PREFIX, CheckPartsResp, DeleteOptions, DiskAPI, DiskInfo, DiskInfoOptions, DiskLocation, FORMAT_CONFIG_FILE,
-    RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq, ReadMultipleResp, ReadOptions,
-    RenameDataResp, STORAGE_FORMAT_FILE_BACKUP, UpdateMetadataOpts, VolumeInfo, WalkDirOptions, conv_part_err_to_int,
+    HEALING_TRACKER_FILENAME, RUSTFS_META_BUCKET, RUSTFS_META_MULTIPART_BUCKET, RUSTFS_META_TMP_BUCKET, ReadMultipleReq,
+    ReadMultipleResp, ReadOptions, RenameDataResp, STORAGE_FORMAT_FILE_BACKUP, UpdateMetadataOpts, VolumeInfo, WalkDirOptions,
+    conv_part_err_to_int,
 };
 use rustfs_disk_core::{
     CHECK_PART_FILE_CORRUPT, CHECK_PART_FILE_NOT_FOUND, CHECK_PART_SUCCESS, CHECK_PART_UNKNOWN, CHECK_PART_VOLUME_NOT_FOUND,
@@ -1620,7 +1621,7 @@ impl DiskAPI for LocalDisk {
 
     // FIXME: TODO: io.writer TODO cancel
     #[tracing::instrument(level = "debug", skip(self, wr))]
-    async fn walk_dir<W: AsyncWrite + Unpin + Send>(&self, opts: WalkDirOptions, wr: &mut W) -> Result<()> {
+    async fn walk_dir(&self, opts: WalkDirOptions, wr: &mut FileWriter) -> Result<()> {
         let volume_dir = self.get_bucket_path(&opts.bucket)?;
 
         if !skip_access_checks(&opts.bucket) {
@@ -1629,9 +1630,7 @@ impl DiskAPI for LocalDisk {
             }
         }
 
-        let mut wr = wr;
-
-        let mut out = MetacacheWriter::new(&mut wr);
+        let mut out = MetacacheWriter::new(wr);
 
         let mut objs_returned = 0;
 
@@ -2374,26 +2373,23 @@ impl DiskAPI for LocalDisk {
     //     Ok(data_usage_info)
     // }
 
-    // #[tracing::instrument(skip(self))]
-    // async fn healing(&self) -> Option<HealingTracker> {
-    //     let healing_file = path_join(&[
-    //         self.path(),
-    //         PathBuf::from(RUSTFS_META_BUCKET),
-    //         PathBuf::from(BUCKET_META_PREFIX),
-    //         PathBuf::from(HEALING_TRACKER_FILENAME),
-    //     ]);
-    //     let b = match fs::read(healing_file).await {
-    //         Ok(b) => b,
-    //         Err(_) => return None,
-    //     };
-    //     if b.is_empty() {
-    //         return None;
-    //     }
-    //     match HealingTracker::unmarshal_msg(&b) {
-    //         Ok(h) => Some(h),
-    //         Err(_) => Some(HealingTracker::default()),
-    //     }
-    // }
+    #[tracing::instrument(skip(self))]
+    async fn healing(&self) -> Option<Bytes> {
+        let healing_file = path_join(&[
+            self.path(),
+            PathBuf::from(RUSTFS_META_BUCKET),
+            PathBuf::from(BUCKET_META_PREFIX),
+            PathBuf::from(HEALING_TRACKER_FILENAME),
+        ]);
+        let b = match fs::read(healing_file).await {
+            Ok(b) => b,
+            Err(_) => return None,
+        };
+        if b.is_empty() {
+            return None;
+        }
+        Some(Bytes::from(b))
+    }
 }
 
 async fn get_disk_info(drive_path: PathBuf) -> Result<(rustfs_utils::os::DiskInfo, bool)> {

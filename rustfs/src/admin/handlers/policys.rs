@@ -15,10 +15,10 @@
 use crate::admin::{router::Operation, utils::has_space_be};
 use http::{HeaderMap, StatusCode};
 use matchit::Params;
-use rustfs_ecstore::global::get_global_action_cred;
 use rustfs_iam::error::is_err_no_such_user;
 use rustfs_iam::store::MappedPolicy;
 use rustfs_policy::policy::Policy;
+use rustfs_store_globals::get_global_action_cred;
 use s3s::{Body, S3Error, S3ErrorCode, S3Request, S3Response, S3Result, header::CONTENT_TYPE, s3_error};
 use serde::Deserialize;
 use serde_urlencoded::from_bytes;

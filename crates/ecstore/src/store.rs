@@ -18,7 +18,6 @@ use crate::bucket::metadata_sys::{self, set_bucket_metadata};
 use crate::bucket::utils::{check_valid_bucket_name, check_valid_bucket_name_strict, is_meta_bucketname};
 use crate::config::GLOBAL_StorageClass;
 use crate::config::storageclass;
-use crate::disk::{DiskAPI, DiskInfo, DiskInfoOptions};
 use crate::error::{Error, Result};
 use crate::error::{
     StorageError, is_err_bucket_exists, is_err_invalid_upload_id, is_err_object_not_found, is_err_read_quorum,
@@ -40,7 +39,6 @@ use crate::store_api::{ListMultipartsInfo, ListObjectVersionsInfo, MultipartInfo
 use crate::store_init::{check_disk_fatal_errs, ec_drives_no_config};
 use crate::{
     bucket::{lifecycle::bucket_lifecycle_ops::TransitionState, metadata::BucketMetadata},
-    disk::{BUCKET_META_PREFIX, DiskOption, DiskStore, RUSTFS_META_BUCKET, new_disk},
     rpc::S3PeerSys,
     sets::Sets,
     store_api::{
@@ -50,17 +48,22 @@ use crate::{
     },
     store_init,
 };
+
 use futures::future::join_all;
 use glob::Pattern;
 use http::HeaderMap;
 use lazy_static::lazy_static;
 use rand::Rng as _;
 use rustfs_common::globals::{GLOBAL_Local_Node_Name, GLOBAL_Rustfs_Host, GLOBAL_Rustfs_Port};
+use rustfs_disk_core::BUCKET_META_PREFIX;
+use rustfs_disk_core::{DiskAPI, DiskInfo, DiskInfoOptions, DiskOption, RUSTFS_META_BUCKET};
 use rustfs_endpoints::{Endpoint, EndpointType, is_erasure_sd};
 use rustfs_endpoints::{EndpointServerPools, get_global_endpoints, is_dist_erasure};
 use rustfs_filemeta::FileInfo;
 use rustfs_filemeta::MetaCacheEntry;
 use rustfs_madmin::heal_commands::HealResultItem;
+use rustfs_store_disk::disk::DiskStore;
+use rustfs_store_disk::disk::new_disk;
 use rustfs_utils::crypto::base64_decode;
 use rustfs_utils::path::{SLASH_SEPARATOR, decode_dir_object, encode_dir_object, path_join_buf};
 use s3s::dto::{BucketVersioningStatus, ObjectLockConfiguration, ObjectLockEnabled, VersioningConfiguration};

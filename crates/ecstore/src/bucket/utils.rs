@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::disk::RUSTFS_META_BUCKET;
 use crate::error::{Error, Result};
+use rustfs_disk_core::RUSTFS_META_BUCKET;
 use s3s::xml;
 
 pub fn is_meta_bucketname(name: &str) -> bool {
