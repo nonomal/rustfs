@@ -1372,7 +1372,8 @@ impl StorageAPI for ECStore {
         }
 
         if let Err(err) = self.peer_sys.make_bucket(bucket, opts).await {
-            if !is_err_bucket_exists(&err.into()) {
+            let err = err.into();
+            if !is_err_bucket_exists(&err) {
                 let _ = self
                     .delete_bucket(
                         bucket,
@@ -1384,6 +1385,8 @@ impl StorageAPI for ECStore {
                     )
                     .await;
             }
+
+            return Err(err);
         };
 
         let mut meta = BucketMetadata::new(bucket);
@@ -2505,14 +2508,14 @@ fn check_object_name_for_length_and_slash(bucket: &str, object: &str) -> Result<
 
     #[cfg(target_os = "windows")]
     {
-        if object.contains('\\')
-            || object.contains(':')
+        if object.contains(':')
             || object.contains('*')
             || object.contains('?')
             || object.contains('"')
             || object.contains('|')
             || object.contains('<')
             || object.contains('>')
+        // || object.contains('\\')
         {
             return Err(StorageError::ObjectNameInvalid(bucket.to_owned(), object.to_owned()));
         }
@@ -2546,9 +2549,9 @@ fn check_bucket_and_object_names(bucket: &str, object: &str) -> Result<()> {
         return Err(StorageError::ObjectNameInvalid(bucket.to_string(), object.to_string()));
     }
 
-    if cfg!(target_os = "windows") && object.contains('\\') {
-        return Err(StorageError::ObjectNameInvalid(bucket.to_string(), object.to_string()));
-    }
+    // if cfg!(target_os = "windows") && object.contains('\\') {
+    //     return Err(StorageError::ObjectNameInvalid(bucket.to_string(), object.to_string()));
+    // }
 
     Ok(())
 }

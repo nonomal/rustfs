@@ -7,6 +7,7 @@
   <a href="https://github.com/rustfs/rustfs/actions/workflows/docker.yml"><img alt="Build and Push Docker Images" src="https://github.com/rustfs/rustfs/actions/workflows/docker.yml/badge.svg" /></a>
   <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/m/rustfs/rustfs"/>
   <img alt="Github Last Commit" src="https://img.shields.io/github/last-commit/rustfs/rustfs"/>
+  <a href="https://hellogithub.com/repository/rustfs/rustfs" target="_blank"><img src="https://abroad.hellogithub.com/v1/widgets/recommend.svg?rid=b95bcb72bdc340b68f16fdf6790b7d5b&claim_uid=MsbvjYeLDKAH457&theme=small" alt="Featured｜HelloGitHub" /></a>
 </p>
 
 <p align="center">
@@ -17,10 +18,20 @@
 </p>
 
 <p align="center">
-English | <a href="https://github.com/rustfs/rustfs/blob/main/README_ZH.md">简体中文</a>
+English | <a href="https://github.com/rustfs/rustfs/blob/main/README_ZH.md">简体中文</a> |
+  <!-- Keep these links. Translations will automatically update with the README. -->
+  <a href="https://readme-i18n.com/rustfs/rustfs?lang=de">Deutsch</a> |
+  <a href="https://readme-i18n.com/rustfs/rustfs?lang=es">Español</a> |
+  <a href="https://readme-i18n.com/rustfs/rustfs?lang=fr">français</a> |
+  <a href="https://readme-i18n.com/rustfs/rustfs?lang=ja">日本語</a> |
+  <a href="https://readme-i18n.com/rustfs/rustfs?lang=ko">한국어</a> |
+  <a href="https://readme-i18n.com/rustfs/rustfs?lang=pt">Português</a> |
+  <a href="https://readme-i18n.com/rustfs/rustfs?lang=ru">Русский</a>
 </p>
 
 RustFS is a high-performance distributed object storage software built using Rust, one of the most popular languages worldwide. Along with MinIO, it shares a range of advantages such as simplicity, S3 compatibility, open-source nature, support for data lakes, AI, and big data. Furthermore, it has a better and more user-friendly open-source license in comparison to other storage systems, being constructed under the Apache license. As Rust serves as its foundation, RustFS provides faster speed and safer distributed features for high-performance object storage.
+
+> ⚠️ **RustFS is under rapid development. Do NOT use in production environments!**
 
 ## Features
 
@@ -61,7 +72,7 @@ Stress test server parameters
 
 To get started with RustFS, follow these steps:
 
-1.  **One-click installation script (Option 1)​​**
+1. **One-click installation script (Option 1)​​**
 
    ```bash
    curl -O  https://rustfs.com/install_rustfs.sh && bash install_rustfs.sh
@@ -70,11 +81,19 @@ To get started with RustFS, follow these steps:
 2. **Docker Quick Start (Option 2)​​**
 
   ```bash
-   podman run -d -p 9000:9000 -p 9001:9001 -v /data:/data quay.io/rustfs/rustfs
+   # Latest stable release
+   docker run -d -p 9000:9000 -v /data:/data rustfs/rustfs:latest
+
+   # Development version (main branch)
+   docker run -d -p 9000:9000 -v /data:/data rustfs/rustfs:main-latest
+
+   # Specific version
+   docker run -d -p 9000:9000 -v /data:/data rustfs/rustfs:v1.0.0
    ```
 
+   > 💡 **Docker Build Options**: RustFS supports flexible Docker image versions. See our [Docker Build Guide](docs/DOCKER_BUILD_GUIDE.md) for advanced usage and manual build instructions.
 
-3. **Access the Console**: Open your web browser and navigate to `http://localhost:9001` to access the RustFS console, default username and password is `rustfsadmin` .
+3. **Access the Console**: Open your web browser and navigate to `http://localhost:9000` to access the RustFS console, default username and password is `rustfsadmin` .
 4. **Create a Bucket**: Use the console to create a new bucket for your objects.
 5. **Upload Objects**: You can upload files directly through the console or use S3-compatible APIs to interact with your RustFS instance.
 
@@ -109,7 +128,7 @@ If you have any questions or need assistance, you can:
 RustFS is a community-driven project, and we appreciate all contributions. Check out the [Contributors](https://github.com/rustfs/rustfs/graphs/contributors) page to see the amazing people who have helped make RustFS better.
 
 <a href="https://github.com/rustfs/rustfs/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=rustfs/rustfs" />
+  <img src="https://opencollective.com/rustfs/contributors.svg?width=890&limit=500&button=false" />
 </a>
 
 ## License

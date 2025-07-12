@@ -1,19 +1,39 @@
 # RustFS Project Cursor Rules
 
-## ⚠️ CRITICAL DEVELOPMENT RULES ⚠️
+## 🚨🚨🚨 CRITICAL DEVELOPMENT RULES - ZERO TOLERANCE 🚨🚨🚨
 
-### 🚨 NEVER COMMIT DIRECTLY TO MASTER/MAIN BRANCH 🚨
+### ⛔️ ABSOLUTE PROHIBITION: NEVER COMMIT DIRECTLY TO MASTER/MAIN BRANCH ⛔️
 
-- **This is the most important rule - NEVER modify code directly on main or master branch**
-- **Always work on feature branches and use pull requests for all changes**
-- **Any direct commits to master/main branch are strictly forbidden**
-- Before starting any development, always:
-  1. `git checkout main` (switch to main branch)
-  2. `git pull` (get latest changes)
-  3. `git checkout -b feat/your-feature-name` (create and switch to feature branch)
-  4. Make your changes on the feature branch
-  5. Commit and push to the feature branch
-  6. Create a pull request for review
+**🔥 THIS IS THE MOST CRITICAL RULE - VIOLATION WILL RESULT IN IMMEDIATE REVERSAL 🔥**
+
+- **🚫 ZERO DIRECT COMMITS TO MAIN/MASTER BRANCH - ABSOLUTELY FORBIDDEN**
+- **🚫 ANY DIRECT COMMIT TO MAIN BRANCH MUST BE IMMEDIATELY REVERTED**
+- **🚫 NO EXCEPTIONS FOR HOTFIXES, EMERGENCIES, OR URGENT CHANGES**
+- **🚫 NO EXCEPTIONS FOR SMALL CHANGES, TYPOS, OR DOCUMENTATION UPDATES**
+- **🚫 NO EXCEPTIONS FOR ANYONE - MAINTAINERS, CONTRIBUTORS, OR ADMINS**
+
+### 📋 MANDATORY WORKFLOW - STRICTLY ENFORCED
+
+**EVERY SINGLE CHANGE MUST FOLLOW THIS WORKFLOW:**
+
+1. **Check current branch**: `git branch` (MUST NOT be on main/master)
+2. **Switch to main**: `git checkout main`
+3. **Pull latest**: `git pull origin main`
+4. **Create feature branch**: `git checkout -b feat/your-feature-name`
+5. **Make changes ONLY on feature branch**
+6. **Test thoroughly before committing**
+7. **Commit and push to feature branch**: `git push origin feat/your-feature-name`
+8. **Create Pull Request**: Use `gh pr create` (MANDATORY)
+9. **Wait for PR approval**: NO self-merging allowed
+10. **Merge through GitHub interface**: ONLY after approval
+
+### 🔒 ENFORCEMENT MECHANISMS
+
+- **Branch protection rules**: Main branch is protected
+- **Pre-commit hooks**: Will block direct commits to main
+- **CI/CD checks**: All PRs must pass before merging
+- **Code review requirement**: At least one approval needed
+- **Automated reversal**: Direct commits to main will be automatically reverted
 
 ## Project Overview
 
@@ -514,7 +534,7 @@ let results = join_all(futures).await;
 
 ### 3. Caching Strategy
 
-- Use `lazy_static` or `OnceCell` for global caching
+- Use `LazyLock` for global caching
 - Implement LRU cache to avoid memory leaks
 
 ## Testing Guidelines
@@ -817,6 +837,7 @@ These rules should serve as guiding principles when developing the RustFS projec
 
 - **🚨 CRITICAL: NEVER modify code directly on main or master branch - THIS IS ABSOLUTELY FORBIDDEN 🚨**
 - **⚠️ ANY DIRECT COMMITS TO MASTER/MAIN WILL BE REJECTED AND MUST BE REVERTED IMMEDIATELY ⚠️**
+- **🔒 ALL CHANGES MUST GO THROUGH PULL REQUESTS - NO DIRECT COMMITS TO MAIN UNDER ANY CIRCUMSTANCES 🔒**
 - **Always work on feature branches - NO EXCEPTIONS**
 - Always check the .cursorrules file before starting to ensure you understand the project guidelines
 - **MANDATORY workflow for ALL changes:**
@@ -826,12 +847,38 @@ These rules should serve as guiding principles when developing the RustFS projec
    4. Make your changes ONLY on the feature branch
    5. Test thoroughly before committing
    6. Commit and push to the feature branch
-   7. Create a pull request for code review
+   7. **Create a pull request for code review - THIS IS THE ONLY WAY TO MERGE TO MAIN**
+   8. **Wait for PR approval before merging - NEVER merge your own PRs without review**
 - Use descriptive branch names following the pattern: `feat/feature-name`, `fix/issue-name`, `refactor/component-name`, etc.
 - **Double-check current branch before ANY commit: `git branch` to ensure you're NOT on main/master**
-- Ensure all changes are made on feature branches and merged through pull requests
+- **Pull Request Requirements:**
+  - All changes must be submitted via PR regardless of size or urgency
+  - PRs must include comprehensive description and testing information
+  - PRs must pass all CI/CD checks before merging
+  - PRs require at least one approval from code reviewers
+  - Even hotfixes and emergency changes must go through PR process
+- **Enforcement:**
+  - Main branch should be protected with branch protection rules
+  - Direct pushes to main should be blocked by repository settings
+  - Any accidental direct commits to main must be immediately reverted via PR
 
 #### Development Workflow
+
+## 🎯 **Core Development Principles**
+
+- **🔴 Every change must be precise - don't modify unless you're confident**
+  - Carefully analyze code logic and ensure complete understanding before making changes
+  - When uncertain, prefer asking users or consulting documentation over blind modifications
+  - Use small iterative steps, modify only necessary parts at a time
+  - Evaluate impact scope before changes to ensure no new issues are introduced
+
+- **🚀 GitHub PR creation prioritizes gh command usage**
+  - Prefer using `gh pr create` command to create Pull Requests
+  - Avoid having users manually create PRs through web interface
+  - Provide clear and professional PR titles and descriptions
+  - Using `gh` commands ensures better integration and automation
+
+## 📝 **Code Quality Requirements**
 
 - Use English for all code comments, documentation, and variable names
 - Write meaningful and descriptive names for variables, functions, and methods

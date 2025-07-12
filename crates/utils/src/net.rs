@@ -17,8 +17,8 @@ use futures::pin_mut;
 use futures::{Stream, StreamExt};
 use hyper::client::conn::http2::Builder;
 use hyper_util::rt::TokioExecutor;
-use lazy_static::lazy_static;
-use std::net::Ipv4Addr;
+use std::net::Ipv6Addr;
+use std::sync::LazyLock;
 use std::{
     collections::HashSet,
     fmt::Display,
@@ -27,9 +27,7 @@ use std::{
 use transform_stream::AsyncTryStream;
 use url::{Host, Url};
 
-lazy_static! {
-    static ref LOCAL_IPS: Vec<IpAddr> = must_get_local_ips().unwrap();
-}
+static LOCAL_IPS: LazyLock<Vec<IpAddr>> = LazyLock::new(|| must_get_local_ips().unwrap());
 
 /// helper for validating if the provided arg is an ip address.
 pub fn is_socket_addr(addr: &str) -> bool {
@@ -178,7 +176,7 @@ impl Display for XHost {
 impl TryFrom<String> for XHost {
     type Error = std::io::Error;
 
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         if let Some(addr) = value.to_socket_addrs()?.next() {
             Ok(Self {
                 name: addr.ip().to_string(),
@@ -202,7 +200,7 @@ pub fn parse_and_resolve_address(addr_str: &str) -> std::io::Result<SocketAddr> 
         } else {
             port
         };
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), final_port)
+        SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), final_port)
     } else {
         let mut addr = check_local_server_addr(addr_str)?; // assume check_local_server_addr is available here
         if addr.port() == 0 {
@@ -214,9 +212,9 @@ pub fn parse_and_resolve_address(addr_str: &str) -> std::io::Result<SocketAddr> 
 }
 
 #[allow(dead_code)]
-pub fn bytes_stream<S, E>(stream: S, content_length: usize) -> impl Stream<Item = std::result::Result<Bytes, E>> + Send + 'static
+pub fn bytes_stream<S, E>(stream: S, content_length: usize) -> impl Stream<Item = Result<Bytes, E>> + Send + 'static
 where
-    S: Stream<Item = std::result::Result<Bytes, E>> + Send + 'static,
+    S: Stream<Item = Result<Bytes, E>> + Send + 'static,
     E: Send + 'static,
 {
     AsyncTryStream::<Bytes, E, _>::new(|mut y| async move {
@@ -478,12 +476,12 @@ mod test {
     fn test_parse_and_resolve_address() {
         // Test port-only format
         let result = parse_and_resolve_address(":8080").unwrap();
-        assert_eq!(result.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_eq!(result.ip(), IpAddr::V6(Ipv6Addr::UNSPECIFIED));
         assert_eq!(result.port(), 8080);
 
         // Test port-only format with port 0 (should get available port)
         let result = parse_and_resolve_address(":0").unwrap();
-        assert_eq!(result.ip(), IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)));
+        assert_eq!(result.ip(), IpAddr::V6(Ipv6Addr::UNSPECIFIED));
         assert!(result.port() > 0);
 
         // Test localhost with port

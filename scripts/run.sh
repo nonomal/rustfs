@@ -57,7 +57,7 @@ export RUSTFS_OBS_ENDPOINT=http://localhost:4317 # OpenTelemetry Collector 的�
 #export RUSTFS_OBS_METER_INTERVAL=1 # 采样间隔，单位为秒
 #export RUSTFS_OBS_SERVICE_NAME=rustfs # 服务名称
 #export RUSTFS_OBS_SERVICE_VERSION=0.1.0 # 服务版本
-#export RUSTFS_OBS_ENVIRONMENT=develop # 环境名称
+export RUSTFS_OBS_ENVIRONMENT=develop # 环境名称
 export RUSTFS_OBS_LOGGER_LEVEL=debug # 日志级别，支持 trace, debug, info, warn, error
 export RUSTFS_OBS_LOCAL_LOGGING_ENABLED=true # 是否启用本地日志记录
 export RUSTFS_OBS_LOG_DIRECTORY="$current_dir/deploy/logs" # Log directory
@@ -99,6 +99,8 @@ export RUSTFS_NS_SCANNER_INTERVAL=60  # 对象扫描间隔时间，单位为秒
 # exportRUSTFS_SKIP_BACKGROUND_TASK=true
 
 export RUSTFS_COMPRESSION_ENABLED=true # 是否启用压缩
+
+#export RUSTFS_REGION="us-east-1"
 
 # 事件消息配置
 #export RUSTFS_EVENT_CONFIG="./deploy/config/event.example.toml"

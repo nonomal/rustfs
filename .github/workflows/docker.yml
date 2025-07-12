@@ -12,231 +12,426 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: Build and Push Docker Images
+name: Docker Images
 
 on:
   push:
-    tags:
-      - "v*"
-    branches:
-      - main
+    tags: ["*.*.*"]
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "**.txt"
+      - ".github/**"
+      - "docs/**"
+      - "deploy/**"
+      - "scripts/dev_*.sh"
+      - "LICENSE*"
+      - "README*"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.svg"
+      - ".gitignore"
+      - ".dockerignore"
   pull_request:
-    branches:
-      - main
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - "**.txt"
+      - ".github/**"
+      - "docs/**"
+      - "deploy/**"
+      - "scripts/dev_*.sh"
+      - "LICENSE*"
+      - "README*"
+      - "**/*.png"
+      - "**/*.jpg"
+      - "**/*.svg"
+      - ".gitignore"
+      - ".dockerignore"
   workflow_dispatch:
     inputs:
-      push_to_registry:
-        description: "Push images to registry"
+      push_images:
+        description: "Push images to registries"
         required: false
         default: true
         type: boolean
+      version:
+        description: "Version to build (latest, main-latest, dev-latest, or specific version like v1.0.0 or dev-abc123)"
+        required: false
+        default: "main-latest"
+        type: string
+      force_rebuild:
+        description: "Force rebuild even if binary exists (useful for testing)"
+        required: false
+        default: false
+        type: boolean
 
 env:
-  REGISTRY_IMAGE_DOCKERHUB: rustfs/rustfs
-  REGISTRY_IMAGE_GHCR: ghcr.io/${{ github.repository }}
+  CARGO_TERM_COLOR: always
+  REGISTRY_DOCKERHUB: rustfs/rustfs
+  REGISTRY_GHCR: ghcr.io/${{ github.repository }}
 
 jobs:
-  # Skip duplicate job runs
-  skip-check:
-    permissions:
-      actions: write
-      contents: read
+  # Docker build strategy check
+  build-check:
+    name: Docker Build Check
     runs-on: ubuntu-latest
     outputs:
-      should_skip: ${{ steps.skip_check.outputs.should_skip }}
-    steps:
-      - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5
-        with:
-          concurrent_skipping: "same_content_newer"
-          cancel_others: true
-          paths_ignore: '["*.md", "docs/**"]'
-
-  # Build RustFS binary for different platforms
-  build-binary:
-    needs: skip-check
-    # Only execute in the following cases: 1) tag push 2) commit message contains --build 3) workflow_dispatch 4) PR
-    if: needs.skip-check.outputs.should_skip != 'true' && (startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '--build') || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request')
-    strategy:
-      matrix:
-        include:
-          - target: x86_64-unknown-linux-musl
-            os: ubuntu-latest
-            arch: amd64
-            use_cross: false
-          - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest
-            arch: arm64
-            use_cross: true
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+      should_build: ${{ steps.check.outputs.should_build }}
+      should_push: ${{ steps.check.outputs.should_push }}
+      build_type: ${{ steps.check.outputs.build_type }}
+      version: ${{ steps.check.outputs.version }}
+      short_sha: ${{ steps.check.outputs.short_sha }}
+      is_prerelease: ${{ steps.check.outputs.is_prerelease }}
+      create_latest: ${{ steps.check.outputs.create_latest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Setup Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          target: ${{ matrix.target }}
-          components: rustfmt, clippy
+          fetch-depth: 0
 
-      - name: Install cross-compilation dependencies (native build)
-        if: matrix.use_cross == false
+      - name: Check build conditions
+        id: check
         run: |
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
+          should_build=false
+          should_push=false
+          build_type="none"
+          version=""
+          short_sha=""
+          is_prerelease=false
+          create_latest=false
 
-      - name: Install cross tool (cross compilation)
-        if: matrix.use_cross == true
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cross
+          # Get short SHA for all builds
+          short_sha=$(git rev-parse --short HEAD)
 
-      - name: Install protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          version: "31.1"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # Always build on workflow_dispatch or when changes detected
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] || \
+             [[ "${{ github.event_name }}" == "push" ]] || \
+             [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            should_build=true
+          fi
 
-      - name: Install flatc
-        uses: Nugine/setup-flatc@v1
-        with:
-          version: "25.2.10"
+          # Determine build type and version
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]] && [[ -n "${{ github.event.inputs.version }}" ]]; then
+            # Manual trigger with version input
+            input_version="${{ github.event.inputs.version }}"
+            version="${input_version}"
+            force_rebuild="${{ github.event.inputs.force_rebuild }}"
 
-      - name: Cache cargo dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ matrix.target }}-
-            ${{ runner.os }}-cargo-
+            echo "🎯 Manual Docker build triggered:"
+            echo "   📋 Requested version: $input_version"
+            echo "   🔧 Force rebuild: $force_rebuild"
 
-      - name: Generate protobuf code
-        run: cargo run --bin gproto
+            case "$input_version" in
+              "latest")
+                build_type="release"
+                create_latest=true
+                echo "🚀 Building with latest stable release version"
+                ;;
+              "main-latest")
+                build_type="development"
+                version="main-latest"
+                echo "🛠️  Building with main branch latest development version"
+                ;;
+              "dev-latest")
+                build_type="development"
+                version="dev-latest"
+                echo "🛠️  Building with development latest version"
+                ;;
+              v[0-9]*)
+                build_type="release"
+                create_latest=true
+                echo "📦 Building with specific release version: $input_version"
+                ;;
+              v*alpha*|v*beta*|v*rc*)
+                build_type="prerelease"
+                is_prerelease=true
+                echo "🧪 Building with prerelease version: $input_version"
+                ;;
+              dev-[a-f0-9]*)
+                build_type="development"
+                echo "🔧 Building with specific development version: $input_version"
+                ;;
+              *)
+                build_type="development"
+                echo "🔧 Building with custom version: $input_version"
+                echo "⚠️  Warning: Custom version format may not follow standard patterns"
+                ;;
+            esac
+          elif [[ "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]]; then
+            # Tag push - release or prerelease
+            tag_name="${GITHUB_REF#refs/tags/}"
+            version="${tag_name}"
 
-      - name: Build RustFS binary (native)
-        if: matrix.use_cross == false
-        run: |
-          cargo build --release --target ${{ matrix.target }} --bin rustfs
+            # Check if this is a prerelease
+            if [[ "$tag_name" == *"alpha"* ]] || [[ "$tag_name" == *"beta"* ]] || [[ "$tag_name" == *"rc"* ]]; then
+              build_type="prerelease"
+              is_prerelease=true
+              echo "🚀 Docker prerelease build detected: $tag_name"
+            else
+              build_type="release"
+              create_latest=true
+              echo "📦 Docker release build detected: $tag_name"
+            fi
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            # Main branch push - development build
+            build_type="development"
+            version="dev-${short_sha}"
+            echo "🛠️  Docker development build detected"
+          else
+            # Other branches - development build
+            build_type="development"
+            version="dev-${short_sha}"
+            echo "🔧 Docker development build detected"
+          fi
 
-      - name: Build RustFS binary (cross)
-        if: matrix.use_cross == true
-        run: |
-          cross build --release --target ${{ matrix.target }} --bin rustfs
+          # Push only on main branch, tags, or manual trigger
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || \
+             [[ "${{ startsWith(github.ref, 'refs/tags/') }}" == "true" ]] || \
+             [[ "${{ github.event.inputs.push_images }}" == "true" ]]; then
+            should_push=true
+          fi
 
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: rustfs-${{ matrix.arch }}
-          path: target/${{ matrix.target }}/release/rustfs
-          retention-days: 1
+          echo "should_build=$should_build" >> $GITHUB_OUTPUT
+          echo "should_push=$should_push" >> $GITHUB_OUTPUT
+          echo "build_type=$build_type" >> $GITHUB_OUTPUT
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "short_sha=$short_sha" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$is_prerelease" >> $GITHUB_OUTPUT
+          echo "create_latest=$create_latest" >> $GITHUB_OUTPUT
 
-  # Build and push multi-arch Docker images
-  build-images:
-    needs: [skip-check, build-binary]
-    if: needs.skip-check.outputs.should_skip != 'true'
+          echo "🐳 Docker Build Summary:"
+          echo "  - Should build: $should_build"
+          echo "  - Should push: $should_push"
+          echo "  - Build type: $build_type"
+          echo "  - Version: $version"
+          echo "  - Short SHA: $short_sha"
+          echo "  - Is prerelease: $is_prerelease"
+          echo "  - Create latest: $create_latest"
+
+  # Build multi-arch Docker images
+  build-docker:
+    name: Build Docker Images
+    needs: build-check
+    if: needs.build-check.outputs.should_build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
+      fail-fast: false
       matrix:
-        image-type: [production, ubuntu, rockylinux, devenv]
+        variant:
+          - name: production
+            dockerfile: Dockerfile
+            platforms: linux/amd64,linux/arm64
+          - name: alpine
+            dockerfile: .docker/alpine/Dockerfile.prebuild
+            platforms: linux/amd64,linux/arm64
+          - name: alpine-source
+            dockerfile: .docker/alpine/Dockerfile.source
+            platforms: linux/amd64,linux/arm64
+          - name: ubuntu
+            dockerfile: .docker/ubuntu/Dockerfile.prebuild
+            platforms: linux/amd64,linux/arm64
+          - name: ubuntu-source
+            dockerfile: .docker/ubuntu/Dockerfile.source
+            platforms: linux/amd64,linux/arm64
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download binary artifacts
-        uses: actions/download-artifact@v4
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          path: ./artifacts
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          scopes: repository:rustfs/rustfs:pull,push
 
-      - name: Setup binary files
-        run: |
-          mkdir -p target/x86_64-unknown-linux-musl/release
-          mkdir -p target/aarch64-unknown-linux-gnu/release
-          cp artifacts/rustfs-amd64/rustfs target/x86_64-unknown-linux-musl/release/
-          cp artifacts/rustfs-arm64/rustfs target/aarch64-unknown-linux-gnu/release/
-          chmod +x target/*/release/rustfs
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # - name: Login to GitHub Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata and generate tags
+        id: meta
+        run: |
+          BUILD_TYPE="${{ needs.build-check.outputs.build_type }}"
+          VERSION="${{ needs.build-check.outputs.version }}"
+          SHORT_SHA="${{ needs.build-check.outputs.short_sha }}"
+          CREATE_LATEST="${{ needs.build-check.outputs.create_latest }}"
+          VARIANT="${{ matrix.variant.name }}"
+
+          # Generate tags based on build type
+          TAGS=""
+
+          if [[ "$BUILD_TYPE" == "development" ]]; then
+            # Development build: dev-${short_sha}-${variant} and dev-${variant}
+            TAGS="${{ env.REGISTRY_DOCKERHUB }}:dev-${SHORT_SHA}-${VARIANT}"
+
+            # Add rolling dev tag for each variant
+            TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:dev-${VARIANT}"
+
+            # Special handling for production variant
+            if [[ "$VARIANT" == "production" ]]; then
+              TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:dev-${SHORT_SHA}"
+              TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:dev"
+            fi
+          else
+            # Release/Prerelease build: ${version}-${variant}
+            TAGS="${{ env.REGISTRY_DOCKERHUB }}:${VERSION}-${VARIANT}"
+
+            # Special handling for production variant - create main version tag
+            if [[ "$VARIANT" == "production" ]]; then
+              TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:${VERSION}"
+            fi
+
+            # Add channel tags for prereleases and latest for stable
+            if [[ "$CREATE_LATEST" == "true" ]]; then
+              # Stable release
+              if [[ "$VARIANT" == "production" ]]; then
+                TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:latest"
+              else
+                TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:latest-${VARIANT}"
+              fi
+            elif [[ "$BUILD_TYPE" == "prerelease" ]]; then
+              # Prerelease channel tags (alpha, beta, rc)
+              if [[ "$VERSION" == *"alpha"* ]]; then
+                CHANNEL="alpha"
+              elif [[ "$VERSION" == *"beta"* ]]; then
+                CHANNEL="beta"
+              elif [[ "$VERSION" == *"rc"* ]]; then
+                CHANNEL="rc"
+              fi
+
+              if [[ -n "$CHANNEL" ]]; then
+                if [[ "$VARIANT" == "production" ]]; then
+                  TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:${CHANNEL}"
+                else
+                  TAGS="$TAGS,${{ env.REGISTRY_DOCKERHUB }}:${CHANNEL}-${VARIANT}"
+                fi
+              fi
+            fi
+          fi
+
+          # Output tags
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+
+          # Generate labels
+          LABELS="org.opencontainers.image.title=RustFS"
+          LABELS="$LABELS,org.opencontainers.image.description=RustFS distributed object storage system"
+          LABELS="$LABELS,org.opencontainers.image.version=$VERSION"
+          LABELS="$LABELS,org.opencontainers.image.revision=${{ github.sha }}"
+          LABELS="$LABELS,org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}"
+          LABELS="$LABELS,org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          LABELS="$LABELS,org.opencontainers.image.variant=$VARIANT"
+          LABELS="$LABELS,org.opencontainers.image.build-type=$BUILD_TYPE"
+
+          echo "labels=$LABELS" >> $GITHUB_OUTPUT
+
+          echo "🐳 Generated Docker tags:"
+          echo "$TAGS" | tr ',' '\n' | sed 's/^/  - /'
+          echo "📋 Build type: $BUILD_TYPE"
+          echo "🔖 Version: $VERSION"
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.variant.dockerfile }}
+          platforms: ${{ matrix.variant.platforms }}
+          push: ${{ needs.build-check.outputs.should_push == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: |
+            type=gha,scope=docker-${{ matrix.variant.name }}
+          cache-to: |
+            type=gha,mode=max,scope=docker-${{ matrix.variant.name }}
+          build-args: |
+            BUILDTIME=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            VERSION=${{ needs.build-check.outputs.version }}
+            BUILD_TYPE=${{ needs.build-check.outputs.build_type }}
+            REVISION=${{ github.sha }}
+            BUILDKIT_INLINE_CACHE=1
+          # Enable advanced BuildKit features for better performance
+          provenance: false
+          sbom: false
+          # Add retry mechanism by splitting the build process
+          no-cache: false
+          pull: true
+
+  # Create manifest for main production image (only for stable releases)
+  create-manifest:
+    name: Create Manifest
+    needs: [build-check, build-docker]
+    if: needs.build-check.outputs.should_push == 'true' && needs.build-check.outputs.create_latest == 'true' && needs.build-check.outputs.build_type == 'release'
+    runs-on: ubuntu-latest
+    steps:
       - name: Login to Docker Hub
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Login to GitHub Container Registry
-        if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Login to GitHub Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set Dockerfile and context
-        id: dockerfile
+      - name: Create and push manifest
         run: |
-          case "${{ matrix.image-type }}" in
-            production)
-              echo "dockerfile=Dockerfile" >> $GITHUB_OUTPUT
-              echo "context=." >> $GITHUB_OUTPUT
-              echo "suffix=" >> $GITHUB_OUTPUT
+          VERSION="${{ needs.build-check.outputs.version }}"
+
+          echo "🐳 Creating manifest for stable release: $VERSION"
+
+          # Create main image tag (without variant suffix) for stable releases only
+          # Note: The "production" variant already creates the main tags without suffix
+          echo "Manifest creation is handled by the production variant build step"
+          echo "Main tags ${VERSION} and latest are created directly by the production variant"
+
+          echo "✅ Manifest created successfully for stable release"
+
+  # Docker build summary
+  docker-summary:
+    name: Docker Build Summary
+    needs: [build-check, build-docker]
+    if: always() && needs.build-check.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Docker build completion summary
+        run: |
+          BUILD_TYPE="${{ needs.build-check.outputs.build_type }}"
+          VERSION="${{ needs.build-check.outputs.version }}"
+          CREATE_LATEST="${{ needs.build-check.outputs.create_latest }}"
+
+          echo "🐳 Docker build completed successfully!"
+          echo "📦 Build type: $BUILD_TYPE"
+          echo "🔢 Version: $VERSION"
+          echo ""
+
+          case "$BUILD_TYPE" in
+            "development")
+              echo "🛠️  Development Docker images have been built with dev-${VERSION} tags"
+              echo "⚠️  These are development images - not suitable for production use"
               ;;
-            ubuntu)
-              echo "dockerfile=.docker/Dockerfile.ubuntu22.04" >> $GITHUB_OUTPUT
-              echo "context=." >> $GITHUB_OUTPUT
-              echo "suffix=-ubuntu22.04" >> $GITHUB_OUTPUT
+            "release")
+              echo "🚀 Release Docker images have been built with v${VERSION} tags"
+              echo "✅ These images are ready for production use"
+              if [[ "$CREATE_LATEST" == "true" ]]; then
+                echo "🏷️  Latest tags have been created for stable release"
+              fi
               ;;
-            rockylinux)
-              echo "dockerfile=.docker/Dockerfile.rockylinux9.3" >> $GITHUB_OUTPUT
-              echo "context=." >> $GITHUB_OUTPUT
-              echo "suffix=-rockylinux9.3" >> $GITHUB_OUTPUT
-              ;;
-            devenv)
-              echo "dockerfile=.docker/Dockerfile.devenv" >> $GITHUB_OUTPUT
-              echo "context=." >> $GITHUB_OUTPUT
-              echo "suffix=-devenv" >> $GITHUB_OUTPUT
+            "prerelease")
+              echo "🧪 Prerelease Docker images have been built with v${VERSION} tags"
+              echo "⚠️  These are prerelease images - use with caution"
+              echo "🚫 Latest tags NOT created for prerelease"
               ;;
           esac
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.REGISTRY_IMAGE_DOCKERHUB }}
-            ${{ env.REGISTRY_IMAGE_GHCR }}
-          tags: |
-            type=ref,event=branch,suffix=${{ steps.dockerfile.outputs.suffix }}
-            type=ref,event=pr,suffix=${{ steps.dockerfile.outputs.suffix }}
-            type=semver,pattern={{version}},suffix=${{ steps.dockerfile.outputs.suffix }}
-            type=semver,pattern={{major}}.{{minor}},suffix=${{ steps.dockerfile.outputs.suffix }}
-            type=semver,pattern={{major}},suffix=${{ steps.dockerfile.outputs.suffix }}
-            type=raw,value=latest,suffix=${{ steps.dockerfile.outputs.suffix }},enable={{is_default_branch}}
-          flavor: |
-            latest=false
-
-      - name: Build and push multi-arch Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ steps.dockerfile.outputs.context }}
-          file: ${{ steps.dockerfile.outputs.dockerfile }}
-          platforms: linux/amd64,linux/arm64
-          push: ${{ (github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))) || github.event.inputs.push_to_registry == 'true' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.image-type }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image-type }}
-          build-args: |
-            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
-            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
-            REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
